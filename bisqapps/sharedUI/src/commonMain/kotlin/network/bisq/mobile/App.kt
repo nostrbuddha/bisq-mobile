@@ -18,11 +18,15 @@ import bisqapps.sharedui.generated.resources.Res
 import bisqapps.sharedui.generated.resources.compose_multiplatform
 
 import network.bisq.mobile.screens.ExchangeScreen
+import network.bisq.mobile.screens.OfferScreen
+import network.bisq.mobile.screens.CombinedExchangeScreen
 
 @Composable
 @Preview
 fun App() {
-    Scaffold() { innerPadding -> ExchangeScreen(innerPadding) }
+    //Scaffold() { innerPadding -> ExchangeScreen(innerPadding) }
+    Scaffold() { innerPadding -> OfferScreen(innerPadding) }
+    //Scaffold() { innerPadding -> CombinedExchangeScreen()(innerPadding) }
 
     /*
     MaterialTheme {
