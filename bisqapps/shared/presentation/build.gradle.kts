@@ -37,7 +37,7 @@ kotlin {
 
             implementation(compose.runtime)
             implementation(compose.foundation)
-            implementation(compose.material)
+            implementation(compose.material3)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
@@ -45,6 +45,13 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.logging.kermit)
             implementation(libs.kotlinx.coroutines)
+            implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc02")
+            implementation("io.coil-kt.coil3:coil-svg:3.0.0-rc02")
+
+            //https://github.com/Kamel-Media/Kamel
+            //implementation("media.kamel:kamel-image:1.0.0")
+            //implementation("media.kamel:kamel-decoder-svg-std:1.0.0")
+            //implementation("io.ktor:ktor-server-netty:3.0.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -62,4 +69,22 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+    dependencies {
+        //implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.0-rc02")
+        //implementation("io.ktor:ktor-client-android:3.0.0")
+    }
+//    dependencies {
+//        implementation("media.kamel:kamel-fetcher-resources-android:1.0.0")
+//    }
 }
+
+//appleMain {
+//    dependencies {
+//        implementation("io.ktor:ktor-client-darwin:3.0.0")
+//    }
+//}
+//jvmMain {
+//    dependencies {
+//        implementation("io.ktor:ktor-client-java:3.0.0>")
+//    }
+//}
