@@ -16,6 +16,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import bisqapps.shared.presentation.generated.resources.Res
 import bisqapps.shared.presentation.generated.resources.compose_multiplatform
 import kotlinx.coroutines.flow.StateFlow
+import network.bisq.mobile.presentation.ui.screens.OnBoardingScreen
 import network.bisq.mobile.presentation.ui.screens.SplashScreen
 
 interface AppPresenter {
@@ -33,8 +34,10 @@ interface AppPresenter {
 @Composable
 @Preview
 fun App(presenter: AppPresenter) {
+
     MaterialTheme {
-        SplashScreen()
+        //SplashScreen()
+        OnBoardingScreen()
     }
 
         // Collecting state from presenter
