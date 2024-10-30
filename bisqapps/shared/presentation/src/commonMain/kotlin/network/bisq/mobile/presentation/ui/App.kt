@@ -6,9 +6,9 @@ import androidx.navigation.compose.rememberNavController
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 import kotlinx.coroutines.flow.StateFlow
+import network.bisq.mobile.presentation.ui.navigation.Routes
 
 import network.bisq.mobile.presentation.ui.navigation.graph.RootNavGraph
-import network.bisq.mobile.presentation.ui.navigation.SplashRouteScreen
 
 interface AppPresenter {
     // Observables for state
@@ -30,7 +30,7 @@ fun App(presenter: AppPresenter) {
     RootNavGraph(
         rootNavController = navController,
         innerPadding = PaddingValues(),
-        startDestination = SplashRouteScreen.Splash.route
+        startDestination = Routes.Splash.name
     )
 
     //MaterialTheme {
@@ -38,7 +38,7 @@ fun App(presenter: AppPresenter) {
         //OnBoardingScreen()
     //}
 
-        // Collecting state from presenter
+// Collecting state from presenter
 //        val showContent by presenter.isContentVisible.collectAsState()
 //        val greeting by presenter.greetingText.collectAsState()
 //        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
