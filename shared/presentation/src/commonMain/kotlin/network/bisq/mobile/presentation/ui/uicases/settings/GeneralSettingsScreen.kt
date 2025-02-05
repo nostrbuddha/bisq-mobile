@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import network.bisq.mobile.i18n.i18n
 import network.bisq.mobile.presentation.ViewPresenter
 import network.bisq.mobile.presentation.ui.components.atoms.*
+import network.bisq.mobile.presentation.ui.components.atoms.layout.BisqGap
 import network.bisq.mobile.presentation.ui.components.atoms.layout.BisqHDivider
 import network.bisq.mobile.presentation.ui.components.layout.BisqScrollLayout
 import network.bisq.mobile.presentation.ui.helpers.RememberPresenterLifecycle
@@ -129,9 +130,7 @@ fun GeneralSettingsScreen(showBackNavigation: Boolean = false) {
                 keyboardType = KeyboardType.Decimal,
                 onValueChange = { it, isValid ->
                     val parsedValue = it.toDoubleOrNull()
-                    if (parsedValue != null) {
-                        presenter.setTradePriceTolerance(parsedValue)
-                    }
+                    presenter.setTradePriceTolerance(parsedValue ?: 0.0)
                 },
                 helperText = "settings.trade.maxTradePriceDeviation.help".i18n(),
                 validation = {
@@ -155,6 +154,17 @@ fun GeneralSettingsScreen(showBackNavigation: Boolean = false) {
                 checked = useAnimations,
                 onSwitch = { presenter.setUseAnimations(it) }
             )
+
+            BisqGap.V5()
+            BisqGap.V5()
+            BisqGap.V5()
+            BisqGap.V5()
+            BisqGap.V5()
+            BisqGap.V5()
+            BisqGap.V5()
+            BisqGap.V5()
+            BisqGap.V5()
+            BisqGap.V5()
 
             if (shouldShowPoWAdjustmentFactor) {
                 BisqHDivider()
