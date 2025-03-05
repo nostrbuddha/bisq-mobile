@@ -45,7 +45,7 @@ class TakeOfferAmountPresenter(
 
     override fun onViewAttached() {
         runCatching {
-            takeOfferModel = TakeOfferPresenter.TakeOfferModel()
+            takeOfferModel = takeOfferPresenter.takeOfferModel
             val offerListItem = takeOfferModel.offerItemPresentationVO
             quoteCurrencyCode = offerListItem.bisqEasyOffer.market.quoteCurrencyCode
 
