@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cafe.adriel.lyricist.LocalStrings
 import kotlinx.coroutines.flow.StateFlow
+import network.bisq.mobile.domain.data.replicated.account.AccountVO
 import network.bisq.mobile.presentation.ViewPresenter
 import network.bisq.mobile.presentation.ui.components.atoms.BisqButton
 import network.bisq.mobile.presentation.ui.components.atoms.BisqButtonType
@@ -20,12 +21,13 @@ import network.bisq.mobile.presentation.ui.composeModels.PaymentAccount
 import network.bisq.mobile.presentation.ui.theme.BisqTheme
 import network.bisq.mobile.presentation.ui.theme.BisqUIConstants
 import org.koin.compose.koinInject
+import kotlin.reflect.KProperty
 
 interface IPaymentAccountSettingsPresenter : ViewPresenter {
-    val accounts: StateFlow<List<PaymentAccount>>
-    val selectedAccount: StateFlow<PaymentAccount>
+    val accounts: StateFlow<List<AccountVO<*, *>>>
+    val selectedAccount: StateFlow<AccountVO<*, *>?>
 
-    fun selectAccount(account: PaymentAccount)
+    fun selectAccount(account: AccountVO<*, *>)
 
     fun addAccount(newName: String, newDescription: String)
     fun saveAccount(newName: String, newDescription: String)
@@ -178,4 +180,3 @@ fun PaymentAccountSettingsScreen() {
     }
 
 }
-
