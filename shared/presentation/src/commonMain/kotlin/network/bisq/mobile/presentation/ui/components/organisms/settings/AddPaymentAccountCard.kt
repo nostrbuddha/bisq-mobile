@@ -20,7 +20,6 @@ import network.bisq.mobile.presentation.ui.components.atoms.BisqButtonType
 import network.bisq.mobile.presentation.ui.components.atoms.BisqText
 import network.bisq.mobile.presentation.ui.components.atoms.BisqTextField
 import network.bisq.mobile.presentation.ui.components.atoms.layout.BisqGap
-import network.bisq.mobile.presentation.ui.theme.BisqTheme
 import network.bisq.mobile.presentation.ui.theme.BisqUIConstants
 
 @Composable

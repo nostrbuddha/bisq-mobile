@@ -41,6 +41,7 @@ fun SettingsScreen(isTabSelected: Boolean) {
     }
 
     // Column is used leaving the possibility to the leaf views to set the scrolling as they please
+    // buddha: TODO: Need scaffold here to make the snackbar work, in any of the Settings sub screens.
     Column(
         modifier = Modifier.fillMaxSize()
     ) {

@@ -2,32 +2,31 @@ package network.bisq.mobile.presentation.ui.uicases.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cafe.adriel.lyricist.LocalStrings
 import kotlinx.coroutines.flow.StateFlow
-import network.bisq.mobile.domain.data.replicated.account.AccountVO
+import network.bisq.mobile.domain.data.replicated.account.UserDefinedFiatAccountVO
 import network.bisq.mobile.presentation.ViewPresenter
-import network.bisq.mobile.presentation.ui.components.atoms.BisqButton
-import network.bisq.mobile.presentation.ui.components.atoms.BisqButtonType
-import network.bisq.mobile.presentation.ui.components.atoms.BisqEditableDropDown
-import network.bisq.mobile.presentation.ui.components.atoms.BisqTextField
+import network.bisq.mobile.presentation.ui.components.atoms.*
 import network.bisq.mobile.presentation.ui.components.atoms.layout.BisqGap
 import network.bisq.mobile.presentation.ui.components.molecules.BisqBottomSheet
 import network.bisq.mobile.presentation.ui.components.molecules.ConfirmationDialog
 import network.bisq.mobile.presentation.ui.components.organisms.settings.AppPaymentAccountCard
-import network.bisq.mobile.presentation.ui.composeModels.PaymentAccount
-import network.bisq.mobile.presentation.ui.theme.BisqTheme
+import network.bisq.mobile.presentation.ui.helpers.RememberPresenterLifecycle
 import network.bisq.mobile.presentation.ui.theme.BisqUIConstants
 import org.koin.compose.koinInject
-import kotlin.reflect.KProperty
 
 interface IPaymentAccountSettingsPresenter : ViewPresenter {
-    val accounts: StateFlow<List<AccountVO<*, *>>>
-    val selectedAccount: StateFlow<AccountVO<*, *>?>
+    val accounts: StateFlow<List<UserDefinedFiatAccountVO>>
+    val selectedAccount: StateFlow<UserDefinedFiatAccountVO?>
 
-    fun selectAccount(account: AccountVO<*, *>)
+    fun selectAccount(account: UserDefinedFiatAccountVO)
 
     fun addAccount(newName: String, newDescription: String)
     fun saveAccount(newName: String, newDescription: String)
@@ -45,15 +44,19 @@ fun PaymentAccountSettingsScreen() {
     val accounts by presenter.accounts.collectAsState()
     val selectedAccount by presenter.selectedAccount.collectAsState()
 
-    var accountName by remember { mutableStateOf(selectedAccount.name) }
-    var accountDescription by remember { mutableStateOf(selectedAccount.description) }
+    var accountName by remember { mutableStateOf(selectedAccount?.accountName ?: "") }
+    var accountNameValid by remember { mutableStateOf(true) }
+    var accountDescription by remember { mutableStateOf(selectedAccount?.accountPayload?.accountData ?: "") }
+    var accountDescriptionValid by remember { mutableStateOf(true) }
 
     var showConfirmationDialog by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
 
+    RememberPresenterLifecycle(presenter)
+
     LaunchedEffect(selectedAccount) {
-        accountName = selectedAccount.name
-        accountDescription = selectedAccount.description
+        accountName = selectedAccount?.accountName ?: ""
+        accountDescription = selectedAccount?.accountPayload?.accountData ?: ""
     }
 
     if (showBottomSheet) {
@@ -100,35 +103,41 @@ fun PaymentAccountSettingsScreen() {
 
         BisqEditableDropDown(
             value = accountName,
-            onValueChanged = { name ->
-                var account = accounts.firstOrNull { it.name == name }
-
+            onValueChanged = { name, isValid ->
+                println("name: $name")
+                var account = accounts.firstOrNull { it.accountName == name }
                 if (account == null) {
-                    account = accounts.firstOrNull { it.description == accountDescription }
-
-                    if (account != null) {
-                        account = PaymentAccount(id = account.id, name = name, description = account.description)
-                    }
+                    account = accounts.firstOrNull { it.accountPayload.accountData == accountDescription }
                 }
-
-                if (account == null) {
-                    account =
-                        PaymentAccount(id = accounts.count().toString(), name = name, description = accountDescription)
+                if (account != null) {
+                    presenter.selectAccount(account)
                 }
-
-                presenter.selectAccount(account)
-                accountName = account.name
-                accountDescription = account.description
+                accountName = name
+                accountNameValid = isValid
             },
-            items = accounts.map { it.name },
-            label = strings.user_userProfile_payment_account
+            items = accounts.map { it.accountName },
+            label = strings.user_userProfile_payment_account,
+            validation = {
+                if (it.length < 3) {
+                    return@BisqEditableDropDown "Min length: 3 characters"
+                }
+
+                if (it.length > 1024) {
+                    return@BisqEditableDropDown "Max length: 1024 characters"
+                }
+
+                return@BisqEditableDropDown null
+            }
         )
 
         BisqGap.V1()
 
         BisqTextField(
             value = accountDescription,
-            onValueChange = { value, isValid -> accountDescription = value },
+            onValueChange = { value, isValid ->
+                accountDescription = value
+                accountDescriptionValid = isValid
+            },
             label = strings.user_paymentAccounts_accountData,
             isTextArea = true,
             validation = {
@@ -154,13 +163,15 @@ fun PaymentAccountSettingsScreen() {
             BisqButton(
                 text = stringsCommon.delete_account,
                 type = BisqButtonType.Grey,
-                onClick = { showConfirmationDialog = true }
+                onClick = { showConfirmationDialog = true },
+                disabled = selectedAccount == null
             )
             BisqButton(
                 text = stringsCommon.buttons_save,
                 onClick = {
                     presenter.saveAccount(accountName, accountDescription)
-                }
+                },
+                disabled = !accountNameValid || !accountDescriptionValid
             )
         }
     }
@@ -169,8 +180,8 @@ fun PaymentAccountSettingsScreen() {
         ConfirmationDialog(
             onConfirm = {
                 presenter.deleteCurrentAccount()
-                accountName = presenter.selectedAccount.value.name
-                accountDescription = presenter.selectedAccount.value.description
+                accountName = presenter.selectedAccount.value?.accountName ?: ""
+                accountDescription = presenter.selectedAccount.value?.accountPayload?.accountData ?: ""
                 showConfirmationDialog = false
             },
             onDismiss = {
