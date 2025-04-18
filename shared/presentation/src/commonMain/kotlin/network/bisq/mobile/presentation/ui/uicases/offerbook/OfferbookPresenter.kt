@@ -29,8 +29,6 @@ class OfferbookPresenter(
     private val takeOfferPresenter: TakeOfferPresenter,
     private val createOfferPresenter: CreateOfferPresenter
 ) : BasePresenter(mainPresenter) {
-    // val offerbookListItems: StateFlow<List<OfferItemPresentationModel>> = offersServiceFacade.offerbookListItems
-
     var _offerbookListItems: MutableStateFlow<List<OfferItemPresentationModel>> = MutableStateFlow(emptyList())
     var offerbookListItems: StateFlow<List<OfferItemPresentationModel>> = _offerbookListItems
 
