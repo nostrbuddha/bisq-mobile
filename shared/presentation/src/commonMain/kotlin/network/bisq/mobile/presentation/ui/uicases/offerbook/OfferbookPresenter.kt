@@ -324,6 +324,7 @@ class OfferbookPresenter(
             val market = offersServiceFacade.selectedOfferbookMarket.value.market
             createOfferPresenter.onStartCreateOffer()
             createOfferPresenter.commitMarket(market)
+            createOfferPresenter.skipCurrency = true
             navigateTo(Routes.CreateOfferDirection)
         } catch (e: Exception) {
             log.e(e) { "Failed to create offer" }
