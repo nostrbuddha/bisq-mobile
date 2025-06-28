@@ -21,6 +21,7 @@ import network.bisq.mobile.domain.data.replicated.settings.SettingsVO
 import network.bisq.mobile.domain.service.market_price.MarketPriceServiceFacade
 import network.bisq.mobile.domain.service.offers.OffersServiceFacade
 import network.bisq.mobile.domain.service.settings.SettingsServiceFacade
+import network.bisq.mobile.i18n.i18n
 import network.bisq.mobile.presentation.BasePresenter
 import network.bisq.mobile.presentation.MainPresenter
 
@@ -133,7 +134,7 @@ class CreateOfferPresenter(
 
     suspend fun createOffer() {
         if (isDemo()) {
-            showSnackbar("Cannot create offer in demonstration mode")
+            showSnackbar("mobile.bisqEasy.offerbook.createOfferDisabledInDemonstrationMode".i18n())
             return
         }
 
