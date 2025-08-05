@@ -209,7 +209,6 @@ class ClientUserProfileServiceFacade(
             ignoredUserIdsMutex.withLock {
                 ignoredUserIdsCache = null
             }
-            return apiResult.getOrThrow()
         } catch (e: Exception) {
             log.e(e) { "Failed to ignore user id: $id" }
             throw e
@@ -225,7 +224,6 @@ class ClientUserProfileServiceFacade(
             ignoredUserIdsMutex.withLock {
                 ignoredUserIdsCache = null
             }
-            return apiResult.getOrThrow()
         } catch (e: Exception) {
             log.e(e) { "Failed to undo ignore user id: $id" }
             throw e

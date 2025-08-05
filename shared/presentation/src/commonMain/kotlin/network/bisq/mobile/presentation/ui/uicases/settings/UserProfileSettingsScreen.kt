@@ -28,7 +28,6 @@ import network.bisq.mobile.presentation.ui.components.atoms.layout.BisqGap
 import network.bisq.mobile.presentation.ui.components.layout.BisqScrollScaffold
 import network.bisq.mobile.presentation.ui.components.molecules.TopBar
 import network.bisq.mobile.presentation.ui.components.molecules.dialog.ConfirmationDialog
-import network.bisq.mobile.presentation.ui.components.molecules.settings.BreadcrumbNavigation
 import network.bisq.mobile.presentation.ui.components.molecules.settings.MenuItem
 import network.bisq.mobile.presentation.ui.helpers.RememberPresenterLifecycle
 import network.bisq.mobile.presentation.ui.theme.BisqTheme
@@ -77,13 +76,6 @@ fun UserProfileSettingsScreen() {
 
     val showLoading = presenter.showLoading.collectAsState().value
     val showDeleteConfirmation = presenter.showDeleteProfileConfirmation.collectAsState().value
-
-    val menuTree: MenuItem = settingsPresenter.menuTree()
-    val menuPath = remember { mutableStateListOf(menuTree) }
-
-    RememberPresenterLifecycle(presenter, {
-        menuPath.add((menuTree as MenuItem.Parent).children[1])
-    })
 
     BisqScrollScaffold(
         topBar = { TopBar("user.userProfile".i18n(), showUserAvatar = false) },
