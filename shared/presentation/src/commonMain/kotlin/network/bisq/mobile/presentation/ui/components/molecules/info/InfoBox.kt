@@ -40,11 +40,11 @@ fun InfoBox(
         {
             when (valueType) {
                 InfoBoxValueType.BoldValue -> if (style == InfoBoxStyle.Style1)
-                    BisqText.h6Regular(value)
+                    BisqText.h6Light(value)
                 else
-                    BisqText.baseRegular(value)
-                InfoBoxValueType.SmallValue -> BisqText.baseRegular(value)
-                InfoBoxValueType.TitleSmall -> BisqText.h4Regular(value)
+                    BisqText.baseLight(value)
+                InfoBoxValueType.SmallValue -> BisqText.baseLight(value)
+                InfoBoxValueType.TitleSmall -> BisqText.h4Light(value)
             }
         }
     } else if (valueComposable != null) {
@@ -53,7 +53,7 @@ fun InfoBox(
         }
     } else {
         {
-            BisqText.h6Regular(text = "[ERR] Pass either value or valueComposable", color = BisqTheme.colors.danger)
+            BisqText.h6Light(text = "[ERR] Pass either value or valueComposable", color = BisqTheme.colors.danger)
         }
     }
 
@@ -63,10 +63,10 @@ fun InfoBox(
                 horizontalAlignment = if (rightAlign) Alignment.End else Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                BisqText.baseRegularGrey(label)
+                BisqText.baseLightGrey(label)
                 valueWidget()
                 if (subvalue != null) {
-                    BisqText.smallRegular(text = subvalue, color = BisqTheme.colors.mid_grey30)
+                    BisqText.smallLight(text = subvalue, color = BisqTheme.colors.mid_grey30)
                 }
             }
         }
@@ -78,9 +78,9 @@ fun InfoBox(
             ) {
                 valueWidget()
                 if (subvalue != null) {
-                    BisqText.xsmallRegular(text = subvalue, color = BisqTheme.colors.mid_grey30)
+                    BisqText.xsmallLight(text = subvalue, color = BisqTheme.colors.mid_grey30)
                 }
-                BisqText.smallRegularGrey(text = label, modifier = Modifier.offset(y = (-4).dp))
+                BisqText.smallLightGrey(text = label, modifier = Modifier.offset(y = (-4).dp))
             }
         }
     }

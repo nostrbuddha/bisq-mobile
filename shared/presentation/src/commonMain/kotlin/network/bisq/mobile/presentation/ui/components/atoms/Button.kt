@@ -114,7 +114,7 @@ fun BisqButton(
         modifier = if (fullWidth) modifier.fillMaxWidth() else modifier
     ) {
         if (iconOnly == null && text == null && textComponent == null) {
-            BisqText.baseMedium("mobile.components.button.passEitherTextOrCustomTextorIcon".i18n())
+            BisqText.baseLight("mobile.components.button.passEitherTextOrCustomTextorIcon".i18n())
         }
 
         if (iconOnly != null) {
@@ -137,7 +137,7 @@ fun BisqButton(
                 if (textComponent != null) {
                     textComponent()
                 } else {
-                    BisqText.baseMedium(
+                    BisqText.baseRegular(
                         text = text,
                         color = finalContentColor,
                         textAlign = textAlign,

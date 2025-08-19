@@ -131,11 +131,11 @@ fun OfferCard(
 
             BisqGap.VHalf()
 
-            BisqText.baseRegular(item.formattedQuoteAmount)
+            BisqText.baseLight(item.formattedQuoteAmount)
 
             BisqGap.VHalf()
 
-            BisqText.smallRegular("@ " + item.formattedPriceSpec)
+            BisqText.smallLight("@ " + item.formattedPriceSpec)
 
             Spacer(modifier = Modifier.weight(1f))
 
