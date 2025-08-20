@@ -18,7 +18,7 @@ fun WhyHighPricePopup(
         onDismissRequest = onDismiss,
     ) {
 
-        BisqText.h6Regular("bisqEasy.price.feedback.learnWhySection.title".i18n())
+        BisqText.h6Light("bisqEasy.price.feedback.learnWhySection.title".i18n())
 
         BisqGap.V1()
 

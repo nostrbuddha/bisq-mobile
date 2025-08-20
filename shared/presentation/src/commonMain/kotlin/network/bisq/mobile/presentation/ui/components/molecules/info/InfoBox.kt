@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import network.bisq.mobile.i18n.i18n
 import network.bisq.mobile.presentation.ui.components.atoms.BisqText
 import network.bisq.mobile.presentation.ui.theme.BisqTheme
 
@@ -53,7 +54,7 @@ fun InfoBox(
         }
     } else {
         {
-            BisqText.h6Light(text = "[ERR] Pass either value or valueComposable", color = BisqTheme.colors.danger)
+            BisqText.h6Light(text = "mobile.components.infoBox.error".i18n(), color = BisqTheme.colors.danger)
         }
     }
 

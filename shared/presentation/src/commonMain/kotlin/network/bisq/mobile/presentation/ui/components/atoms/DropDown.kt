@@ -117,7 +117,7 @@ fun BisqDropDown(
                 val textToShow = if (showKey) item.first else item.second
 
                 DropdownMenuItem(
-                    text = { BisqText.baseLight(textToShow) },
+                    text = { BisqText.baseLight(textToShow, singleLine = true) },
                     onClick = {
                         showError.value = false
                         if (chipMultiSelect) {

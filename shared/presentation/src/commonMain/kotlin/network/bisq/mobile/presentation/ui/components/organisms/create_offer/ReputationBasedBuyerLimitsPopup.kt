@@ -24,10 +24,11 @@ fun ReputationBasedBuyerLimitsPopup(
 
     BisqDialog(
         horizontalAlignment = Alignment.Start,
+        padding = BisqUIConstants.ScreenPadding,
         onDismissRequest = onDismiss,
     ) {
 
-        BisqText.h6Regular("bisqEasy.tradeWizard.amount.limitInfo.overlay.headline".i18n())
+        BisqText.h6Light("bisqEasy.tradeWizard.amount.limitInfo.overlay.headline".i18n())
 
         BisqGap.V1()
 

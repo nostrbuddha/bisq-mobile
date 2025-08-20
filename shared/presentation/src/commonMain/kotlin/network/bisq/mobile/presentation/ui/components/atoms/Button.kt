@@ -86,7 +86,7 @@ fun BisqButton(
         BisqButtonType.Danger -> null
         BisqButtonType.Outline -> BorderStroke(1.dp, borderColor)
         BisqButtonType.GreyOutline -> BorderStroke(1.dp, grey2)
-        BisqButtonType.WarningOutline -> BorderStroke(1.dp, BisqTheme.colors.warning)
+        BisqButtonType.WarningOutline -> BorderStroke(1.dp, if (disabled) BisqTheme.colors.mid_grey10 else BisqTheme.colors.warning)
         BisqButtonType.Clear -> null
     }
 
