@@ -71,17 +71,16 @@ class AndroidUrlLauncher(
     private val log = getLogger("AndroidUrlLauncher")
 
     override fun openUrl(url: String): Boolean {
-        val safeUrl = sanitizeUrlForLog(url)
         val intent = Intent(Intent.ACTION_VIEW, url.toUri())
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         try {
             context.startActivity(intent)
             return true
         } catch (_: ActivityNotFoundException) {
-            log.w { "No activity found to handle URL (install a browser or check link): $safeUrl" }
+            log.w { "No activity found to handle URL (install a browser or check link): ${sanitizeUrlForLog(url)}" }
             return false
         } catch (e: Exception) {
-            log.e(e) { "Failed to open URL: $safeUrl" }
+            log.e(e) { "Failed to open URL: ${sanitizeUrlForLog(url)}" }
             return false
         }
     }
