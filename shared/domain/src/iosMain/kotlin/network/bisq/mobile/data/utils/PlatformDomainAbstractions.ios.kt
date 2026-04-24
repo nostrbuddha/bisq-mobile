@@ -14,8 +14,10 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.serialization.Serializable
+import network.bisq.mobile.data.utils.sanitizeUrlForLog
 import network.bisq.mobile.domain.model.PlatformInfo
 import network.bisq.mobile.domain.model.PlatformType
+import network.bisq.mobile.domain.utils.getLogger
 import network.bisq.mobile.i18n.i18n
 import org.koin.core.scope.Scope
 import platform.CoreGraphics.CGRectMake
@@ -334,12 +336,14 @@ actual fun setupUncaughtExceptionHandler(onCrash: (Throwable) -> Unit) {
 
 class IOSUrlLauncher : UrlLauncher {
     override fun openUrl(url: String): Boolean {
+        val log = getLogger("IOSUrlLauncher")
         val nsUrl = NSURL.URLWithString(url)
         if (nsUrl != null && UIApplication.sharedApplication.canOpenURL(nsUrl)) {
             // fake secondary parameters are important so that iOS compiler knows which override to use
             UIApplication.sharedApplication.openURL(nsUrl, options = mapOf<Any?, String>(), completionHandler = null)
             return true
         }
+        log.w { "Failed to open URL: ${sanitizeUrlForLog(url)}" }
         return false
     }
 }
