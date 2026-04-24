@@ -39,6 +39,7 @@ fun TradeChatScreen(tradeId: String) {
     val ignoredUserIds by presenter.ignoredProfileIds.collectAsState()
     val ignoreUserId by presenter.ignoreUserId.collectAsState()
     val undoIgnoreUserId by presenter.undoIgnoreUserId.collectAsState()
+    val isUndoIgnoreInFlight by presenter.isUndoIgnoreInFlight.collectAsState()
     val showIgnoreUserWarnBox = ignoreUserId.isNotBlank()
     val showUndoIgnoreUserWarnBox = undoIgnoreUserId.isNotBlank()
     val showChatRulesWarnBox by presenter.showChatRulesWarnBox.collectAsState()
@@ -47,6 +48,7 @@ fun TradeChatScreen(tradeId: String) {
     val showReportUserDialog by presenter.showReportUserDialog.collectAsState()
     val reportUserTradeMessage by presenter.reportUserTradeMessage.collectAsState()
     val reportUserMessage by presenter.reportUserMessage.collectAsState()
+    val isSendingChatMessage by presenter.isSendingChatMessage.collectAsState()
 
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
@@ -97,6 +99,7 @@ fun TradeChatScreen(tradeId: String) {
             placeholder = "chat.message.input.prompt".i18n(),
             onMessageSend = presenter::sendChatMessage,
             onCloseReply = { presenter.onReply(null) },
+            isSending = isSendingChatMessage,
         )
 
         reportUserTradeMessage?.let { message ->
@@ -128,6 +131,7 @@ fun TradeChatScreen(tradeId: String) {
             UndoIgnoreDialog(
                 onConfirm = { presenter.onConfirmedUndoIgnoreUser(undoIgnoreUserId) },
                 onDismiss = { presenter.onDismissUndoIgnoreUser() },
+                confirmButtonLoading = isUndoIgnoreInFlight,
             )
         }
 

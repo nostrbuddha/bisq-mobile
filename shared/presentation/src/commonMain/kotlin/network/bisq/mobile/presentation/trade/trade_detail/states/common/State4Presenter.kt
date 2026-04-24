@@ -42,7 +42,13 @@ abstract class State4Presenter(
     }
 
     override fun onViewUnattaching() {
-        _uiState.update { it.copy(showCloseTradeDialog = false) }
+        _uiState.update {
+            it.copy(
+                showCloseTradeDialog = false,
+                isConfirmCloseTradeLoading = false,
+                isExportTradeLoading = false,
+            )
+        }
         super.onViewUnattaching()
     }
 
@@ -60,7 +66,7 @@ abstract class State4Presenter(
     }
 
     private fun onDismissCloseTrade() {
-        _uiState.update { it.copy(showCloseTradeDialog = false) }
+        _uiState.update { it.copy(showCloseTradeDialog = false, isConfirmCloseTradeLoading = false) }
     }
 
     private fun onConfirmCloseTrade() {
@@ -71,48 +77,65 @@ abstract class State4Presenter(
                     GenericErrorHandler.handleGenericError("No trade selected for closure")
                     return@launch
                 }
+            _uiState.update { it.copy(isConfirmCloseTradeLoading = true) }
             showLoading()
-            val result = tradesServiceFacade.closeTrade()
-
-            when {
-                result.isFailure -> {
-                    _uiState.update { it.copy(showCloseTradeDialog = false) }
-                    result
-                        .exceptionOrNull()
-                        ?.let { exception -> GenericErrorHandler.handleGenericError(exception.message) }
-                        ?: GenericErrorHandler.handleGenericError("No Exception is set in result failure")
-                }
-
-                result.isSuccess -> {
-                    withContext(Dispatchers.IO) {
-                        tradeReadStateRepository.clearId(tradeId)
+            try {
+                val result = tradesServiceFacade.closeTrade()
+                when {
+                    result.isFailure -> {
+                        _uiState.update { it.copy(showCloseTradeDialog = false) }
+                        result
+                            .exceptionOrNull()
+                            ?.let { exception -> GenericErrorHandler.handleGenericError(exception.message) }
+                            ?: GenericErrorHandler.handleGenericError("No Exception is set in result failure")
                     }
-                    _uiState.update { it.copy(showCloseTradeDialog = false) }
-                    navigateBack()
+
+                    result.isSuccess -> {
+                        withContext(Dispatchers.IO) {
+                            tradeReadStateRepository.clearId(tradeId)
+                        }
+                        _uiState.update { it.copy(showCloseTradeDialog = false) }
+                        navigateBack()
+                    }
                 }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(showCloseTradeDialog = false) }
+                GenericErrorHandler.handleGenericError(e.message)
+            } finally {
+                hideLoading()
+                _uiState.update { it.copy(isConfirmCloseTradeLoading = false) }
             }
-            hideLoading()
         }
     }
 
     private fun onExportTrade() {
+        log.w { "onExportTrade - BEGIN" }
+        val trade =
+            _uiState.value.trade ?: run {
+                GenericErrorHandler.handleGenericError("No trade selected for export")
+                return
+            }
+        _uiState.update { it.copy(isExportTradeLoading = true) }
+        showLoading()
         presenterScope.launch {
-            val trade =
-                _uiState.value.trade ?: run {
-                    GenericErrorHandler.handleGenericError("No trade selected for export")
-                    return@launch
+            try {
+                val headers = TradeExportCsvHeaders.resolveForTrade(trade)
+                val csv =
+                    withContext(Dispatchers.Default) {
+                        TradeCompletedCsv.buildCsv(trade, headers)
+                    }
+                val fileName = "BisqEasy-trade-${trade.shortTradeId}.csv"
+                val result = shareFileService.shareUtf8TextFile(csv, fileName)
+                if (result.isFailure) {
+                    result.exceptionOrNull()?.let { e ->
+                        GenericErrorHandler.handleGenericError(e.message)
+                    } ?: GenericErrorHandler.handleGenericError("Trade export failed")
                 }
-            val headers = TradeExportCsvHeaders.resolveForTrade(trade)
-            val csv =
-                withContext(Dispatchers.Default) {
-                    TradeCompletedCsv.buildCsv(trade, headers)
-                }
-            val fileName = "BisqEasy-trade-${trade.shortTradeId}.csv"
-            val result = shareFileService.shareUtf8TextFile(csv, fileName)
-            if (result.isFailure) {
-                result.exceptionOrNull()?.let { e ->
-                    GenericErrorHandler.handleGenericError(e.message)
-                } ?: GenericErrorHandler.handleGenericError("Trade export failed")
+            } catch (e: Exception) {
+                GenericErrorHandler.handleGenericError(e.message)
+            } finally {
+                hideLoading()
+                _uiState.update { it.copy(isExportTradeLoading = false) }
             }
         }
     }

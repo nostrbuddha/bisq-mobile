@@ -35,6 +35,9 @@ class SellerState3aPresenter(
     private var _bitcoinAddressFieldType = MutableStateFlow(BitcoinLnAddressFieldType.Bitcoin)
     val bitcoinLnAddressFieldType: StateFlow<BitcoinLnAddressFieldType> = _bitcoinAddressFieldType.asStateFlow()
 
+    private val _isConfirmBtcSentLoading = MutableStateFlow(false)
+    val isConfirmBtcSentLoading = _isConfirmBtcSentLoading.asStateFlow()
+
     private val _isLightning: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val isLightning: StateFlow<Boolean> = _isLightning.asStateFlow()
 
@@ -76,15 +79,19 @@ class SellerState3aPresenter(
             _showInvalidAddressDialog.value = true
             return
         }
+        _isConfirmBtcSentLoading.value = true
+        showLoading()
         presenterScope.launch {
-            showLoading()
-            val result = tradesServiceFacade.sellerConfirmBtcSent(paymentProof.value)
-            hideLoading()
-            if (result.isSuccess) {
-                setShowInvalidAddressDialog(false)
-            } else {
-                // TODO: Display error to user (e.g., via snackbar or error dialog) ?
-                log.e { "Failed to confirm BTC sent: ${result.exceptionOrNull()?.message}" }
+            try {
+                tradesServiceFacade
+                    .sellerConfirmBtcSent(paymentProof.value)
+                    .onSuccess { setShowInvalidAddressDialog(false) }
+                    .onFailure { exception -> handleError(exception) }
+            } catch (e: Exception) {
+                handleError(e)
+            } finally {
+                hideLoading()
+                _isConfirmBtcSentLoading.value = false
             }
         }
     }

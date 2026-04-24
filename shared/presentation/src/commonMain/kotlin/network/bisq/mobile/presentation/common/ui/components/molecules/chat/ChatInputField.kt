@@ -39,6 +39,7 @@ fun ChatInputField(
     placeholder: String = EMPTY_STRING,
     resetScroll: () -> Unit = {},
     onCloseReply: () -> Unit = {},
+    isSending: Boolean = false,
 ) {
     val focusRequester = remember { FocusRequester() }
     var text by remember { mutableStateOf("") }
@@ -58,13 +59,14 @@ fun ChatInputField(
             trailingIcon = {
                 BisqIconButton(
                     onClick = {
-                        if (text.isNotBlank() && isTextValid) {
+                        if (text.isNotBlank() && isTextValid && !isSending) {
                             onMessageSend(text)
                             resetScroll()
                             text = ""
                         }
                     },
                     disabled = text.isBlank() || !isTextValid,
+                    isLoading = isSending,
                 ) {
                     SendIcon()
                 }

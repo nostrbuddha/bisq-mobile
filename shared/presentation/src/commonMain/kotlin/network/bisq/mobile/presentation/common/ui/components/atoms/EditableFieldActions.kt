@@ -21,6 +21,7 @@ import network.bisq.mobile.presentation.common.ui.theme.BisqTheme
  * @param onCancel Callback invoked when the Cancel button is clicked (typically reverts changes)
  * @param modifier Modifier to be applied to the Row containing the buttons
  * @param disabled Whether the buttons are disabled (default: false)
+ * @param isSaveLoading When true, shows spinner on save and disables cancel until the save completes.
  */
 @Composable
 fun EditableFieldActions(
@@ -28,6 +29,7 @@ fun EditableFieldActions(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
     disabled: Boolean = false,
+    isSaveLoading: Boolean = false,
 ) {
     Row(
         modifier = modifier,
@@ -38,6 +40,7 @@ fun EditableFieldActions(
                     .padding(start = 4.dp)
                     .size(30.dp),
             disabled = disabled,
+            isLoading = isSaveLoading,
             iconOnly = {
                 Icon(
                     Icons.Filled.Check,
@@ -53,7 +56,7 @@ fun EditableFieldActions(
                 Modifier
                     .padding(start = 10.dp)
                     .size(30.dp),
-            disabled = disabled,
+            disabled = disabled || isSaveLoading,
             iconOnly = {
                 Icon(
                     Icons.Filled.Close,

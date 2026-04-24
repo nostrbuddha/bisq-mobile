@@ -73,6 +73,9 @@ class TradeChatPresenter(
     private val _undoIgnoreUserId: MutableStateFlow<String> = MutableStateFlow("")
     val undoIgnoreUserId: StateFlow<String> = _undoIgnoreUserId.asStateFlow()
 
+    private val _isUndoIgnoreInFlight = MutableStateFlow(false)
+    val isUndoIgnoreInFlight: StateFlow<Boolean> = _isUndoIgnoreInFlight.asStateFlow()
+
     val ignoredProfileIds: StateFlow<Set<String>> get() = userProfileServiceFacade.ignoredProfileIds
 
     val userProfileIconProvider: suspend (UserProfileVO) -> PlatformImage get() = userProfileServiceFacade::getUserProfileIcon
@@ -88,6 +91,9 @@ class TradeChatPresenter(
 
     private val _reportUserMessage = MutableStateFlow<String?>(null)
     val reportUserMessage: StateFlow<String?> = _reportUserMessage.asStateFlow()
+
+    private val _isSendingChatMessage = MutableStateFlow(false)
+    val isSendingChatMessage: StateFlow<Boolean> = _isSendingChatMessage.asStateFlow()
 
     val readCount =
         selectedTrade
@@ -190,9 +196,23 @@ class TradeChatPresenter(
                     )
                 }
             }
+        _isSendingChatMessage.value = true
+        showLoading()
         presenterScope.launch {
-            tradeChatMessagesServiceFacade.sendChatMessage(finalText, citation)
-            _quotedMessage.value = null
+            try {
+                tradeChatMessagesServiceFacade
+                    .sendChatMessage(finalText, citation)
+                    .onSuccess {
+                        _quotedMessage.value = null
+                    }.onFailure { e ->
+                        handleError(e)
+                    }
+            } catch (e: Exception) {
+                handleError(e)
+            } finally {
+                hideLoading()
+                _isSendingChatMessage.value = false
+            }
         }
     }
 
@@ -255,8 +275,9 @@ class TradeChatPresenter(
     }
 
     fun onConfirmedUndoIgnoreUser(id: String) {
+        _isUndoIgnoreInFlight.value = true
+        showLoading()
         presenterScope.launch {
-            showLoading()
             try {
                 userProfileServiceFacade.undoIgnoreUserProfile(id)
                 hideUndoIgnoreUserPopup()
@@ -264,6 +285,7 @@ class TradeChatPresenter(
                 log.e(e) { "Failed to undo ignore user $id" }
             } finally {
                 hideLoading()
+                _isUndoIgnoreInFlight.value = false
             }
         }
     }

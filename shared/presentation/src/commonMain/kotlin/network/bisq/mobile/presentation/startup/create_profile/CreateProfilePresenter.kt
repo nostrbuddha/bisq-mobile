@@ -86,13 +86,16 @@ class CreateProfilePresenter(
 
     fun onCreateAndPublishNewUserProfile() {
         val toSubmit = nickName.value.trim()
-        if (toSubmit.isNotEmpty()) {
-            presenterScope.launch {
-                disableInteractive()
-                _createAndPublishInProgress.value = true
-                log.i { "Show busy animation for createAndPublishInProgress" }
+        if (toSubmit.isEmpty()) return
+
+        _createAndPublishInProgress.value = true
+        showLoading()
+        log.i { "Show busy animation for createAndPublishInProgress" }
+        presenterScope.launch {
+            try {
                 runCatching {
                     userProfileService.createAndPublishNewUserProfile(toSubmit)
+                }.onSuccess {
                     if (isOnboarding.value) {
                         // Navigate to TabContainer and completely clear the back stack
                         // This ensures the user can never navigate back to onboarding screens
@@ -102,19 +105,17 @@ class CreateProfilePresenter(
                     } else {
                         navigateBack()
                     }
-
                     log.i { "Hide busy animation for createAndPublishInProgress" }
                     _nickName.value = ""
-                    _createAndPublishInProgress.value = false
-                    enableInteractive()
                 }.onFailure { e ->
                     GenericErrorHandler.handleGenericError(
                         "Creating and publishing new user profile failed.",
                         e,
                     )
-                    _createAndPublishInProgress.value = false
-                    enableInteractive()
                 }
+            } finally {
+                _createAndPublishInProgress.value = false
+                hideLoading()
             }
         }
     }
@@ -135,7 +136,6 @@ class CreateProfilePresenter(
                     setProfileIcon(profileIcon)
                 }
             }.onFailure {
-                disableInteractive()
                 showSnackbar("mobile.profile.generatingKeyPairFailed".i18n(), type = SnackbarType.ERROR)
             }
             _generateKeyPairInProgress.value = false

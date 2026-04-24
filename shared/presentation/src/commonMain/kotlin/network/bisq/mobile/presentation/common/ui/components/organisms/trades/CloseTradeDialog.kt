@@ -8,12 +8,14 @@ import network.bisq.mobile.presentation.common.ui.components.molecules.dialog.Co
 fun CloseTradeDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
+    confirmButtonLoading: Boolean = false,
 ) {
     ConfirmationDialog(
         headline = "",
         message = "bisqEasy.openTrades.closeTrade.warning.completed".i18n(),
         dismissButtonText = "action.cancel".i18n(),
         confirmButtonText = "bisqEasy.openTrades.confirmCloseTrade".i18n(),
+        confirmButtonLoading = confirmButtonLoading,
         onConfirm = onConfirm,
         onDismiss = { _ -> onDismiss() },
         verticalButtonPlacement = true,

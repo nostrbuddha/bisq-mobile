@@ -30,14 +30,17 @@ class TabContainerPresenter(
     private val _showTradeRestrictedDialog = MutableStateFlow<AlertNotificationUiState?>(null)
     override val showTradeRestrictedDialog: StateFlow<AlertNotificationUiState?> = _showTradeRestrictedDialog.asStateFlow()
 
+    private val _isCreateOfferInFlight = MutableStateFlow(false)
+    override val isCreateOfferInFlight: StateFlow<Boolean> = _isCreateOfferInFlight.asStateFlow()
+
     override fun createOffer() {
         val activeAlert = tradeRestrictingAlertServiceFacade.alert.value
         if (activeAlert != null) {
             _showTradeRestrictedDialog.value = activeAlert.toAlertNotificationUiState()
             return
         }
-        if (!isInteractive.value) return // This isInteractive UI blocker doesn't apply to FAB buttons
-        disableInteractive()
+        _isCreateOfferInFlight.value = true
+        showLoading()
         try {
             createOfferCoordinator.onStartCreateOffer()
             createOfferCoordinator.skipCurrency = false
@@ -45,7 +48,8 @@ class TabContainerPresenter(
         } catch (e: Exception) {
             log.e(e) { "Failed to create offer: ${e.message}" }
         } finally {
-            enableInteractive()
+            hideLoading()
+            _isCreateOfferInFlight.value = false
         }
     }
 

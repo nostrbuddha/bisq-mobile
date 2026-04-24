@@ -12,6 +12,7 @@ fun CancelTradeDialog(
     onDismiss: () -> Unit,
     isRejection: Boolean,
     isBuyer: Boolean = true,
+    confirmButtonLoading: Boolean = false,
 ) {
     val part2: String = "bisqEasy.openTrades.cancelTrade.warning.part2".i18n()
     val warningText1 =
@@ -34,6 +35,7 @@ fun CancelTradeDialog(
             } else {
                 BisqUIConstants.ScreenPaddingHalf
             },
+        confirmButtonLoading = confirmButtonLoading,
         onDismiss = onDismiss,
         onConfirm = onCancelConfirm,
     )

@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -40,16 +41,19 @@ class CreateOfferMarketPresenter(
     // Trigger to force market list updates when market prices change
     private val _marketPriceUpdated = MutableStateFlow(false)
 
+    private val _isInitialMarketsLoad = MutableStateFlow(true)
+    val isInitialMarketsLoad: StateFlow<Boolean> = _isInitialMarketsLoad.asStateFlow()
+
     override fun onViewAttached() {
         super.onViewAttached()
 
-        // wait for market items to be ready
-        disableInteractive()
         presenterScope.launch {
-            offersServiceFacade.offerbookMarketItems.collect { markets ->
-                if (markets.isNotEmpty()) {
-                    enableInteractive()
-                }
+            showLoading()
+            try {
+                offersServiceFacade.offerbookMarketItems.first { it.isNotEmpty() }
+            } finally {
+                hideLoading()
+                _isInitialMarketsLoad.value = false
             }
         }
 

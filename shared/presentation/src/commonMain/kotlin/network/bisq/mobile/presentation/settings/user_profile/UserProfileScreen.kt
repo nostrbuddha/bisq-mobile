@@ -224,7 +224,7 @@ fun UserProfileScreen() {
             UserProfileScreenFooter(
                 onSavePress = { presenter.onAction(UserProfileUiAction.OnSavePress) },
                 onDeletePress = { presenter.onAction(UserProfileUiAction.OnDeletePress) },
-                isBusy = uiState.isBusy,
+                isBusy = uiState.isBusyWithAction,
             )
         }
     }

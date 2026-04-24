@@ -28,6 +28,7 @@ fun BuyerStateLightning3b(
     RememberPresenterLifecycle(presenter)
 
     val selectedTrade by presenter.selectedTrade.collectAsState()
+    val isCompleteTradeLoading by presenter.isCompleteTradeLoading.collectAsState()
     val trade = selectedTrade ?: return
     val preImage by trade.bisqEasyTradeModel.paymentProof.collectAsState()
 
@@ -67,6 +68,7 @@ fun BuyerStateLightning3b(
                 // Confirm receipt
                 text = "bisqEasy.tradeState.info.buyer.phase3b.confirmButton.ln".i18n(),
                 onClick = { presenter.onCompleteTrade() },
+                isLoading = isCompleteTradeLoading,
             )
         }
     }

@@ -38,7 +38,7 @@ fun TakeOfferReviewTradeScreen() {
     val takeOfferCoordinator: TakeOfferCoordinator = koinInject()
     RememberPresenterLifecycle(presenter)
 
-    val showProgressDialog by presenter.showTakeOfferProgressDialog.collectAsState()
+    val isTakeOfferLoading by presenter.isTakeOfferLoading.collectAsState()
     val showSuccessDialog by presenter.showTakeOfferSuccessDialog.collectAsState()
     val isInteractive by presenter.isInteractive.collectAsState()
 
@@ -69,7 +69,7 @@ fun TakeOfferReviewTradeScreen() {
         isSmallScreen = presenter::isSmallScreen,
         stepIndex = stepIndex,
         stepsLength = takeOfferCoordinator.totalSteps,
-        showProgressDialog = showProgressDialog,
+        isTakeOfferLoading = isTakeOfferLoading,
         showSuccessDialog = showSuccessDialog,
         isInteractive = isInteractive,
         onBack = presenter::onBack,
@@ -96,7 +96,7 @@ fun TakeOfferReviewContent(
     isSmallScreen: () -> Boolean,
     stepIndex: Int,
     stepsLength: Int,
-    showProgressDialog: Boolean,
+    isTakeOfferLoading: Boolean,
     showSuccessDialog: Boolean,
     isInteractive: Boolean,
     onBack: () -> Unit,
@@ -111,8 +111,10 @@ fun TakeOfferReviewContent(
         prevOnClick = onBack,
         nextButtonText = "bisqEasy.takeOffer.review.takeOffer".i18n(),
         nextOnClick = onTakeOffer,
+        prevDisabled = isTakeOfferLoading,
+        nextIsLoading = isTakeOfferLoading,
         isInteractive = isInteractive,
-        shouldBlurBg = showProgressDialog || showSuccessDialog,
+        shouldBlurBg = isTakeOfferLoading || showSuccessDialog,
         showUserAvatar = false,
         closeAction = true,
         onConfirmedClose = onClose,
@@ -221,7 +223,7 @@ fun TakeOfferReviewContent(
         }
     }
 
-    if (showProgressDialog) {
+    if (isTakeOfferLoading) {
         TakeOfferProgressDialog()
     }
 
@@ -251,7 +253,7 @@ private fun TakeOfferReviewScreen_Buyer_Preview() {
             isSmallScreen = { false },
             stepIndex = 4,
             stepsLength = 4,
-            showProgressDialog = false,
+            isTakeOfferLoading = false,
             showSuccessDialog = false,
             isInteractive = true,
             onBack = {},
@@ -281,7 +283,7 @@ private fun TakeOfferReviewScreen_Seller_Preview() {
             isSmallScreen = { false },
             stepIndex = 4,
             stepsLength = 4,
-            showProgressDialog = false,
+            isTakeOfferLoading = false,
             showSuccessDialog = false,
             isInteractive = true,
             onBack = {},
@@ -311,7 +313,7 @@ private fun TakeOfferReviewScreen_SmallScreen_Buyer_Preview() {
             isSmallScreen = { true },
             stepIndex = 4,
             stepsLength = 4,
-            showProgressDialog = false,
+            isTakeOfferLoading = false,
             showSuccessDialog = false,
             isInteractive = true,
             onBack = {},
@@ -341,7 +343,7 @@ private fun TakeOfferReviewScreen_SmallScreen_Seller_Preview() {
             isSmallScreen = { true },
             stepIndex = 4,
             stepsLength = 4,
-            showProgressDialog = false,
+            isTakeOfferLoading = false,
             showSuccessDialog = false,
             isInteractive = true,
             onBack = {},
@@ -354,7 +356,7 @@ private fun TakeOfferReviewScreen_SmallScreen_Seller_Preview() {
 
 @Preview
 @Composable
-private fun TakeOfferReviewScreen_WithProgressDialog_Preview() {
+private fun TakeOfferReviewScreen_WithTakeOfferLoading_Preview() {
     BisqTheme.Preview {
         TakeOfferReviewContent(
             headLine = "Buy Bitcoin",
@@ -371,9 +373,9 @@ private fun TakeOfferReviewScreen_WithProgressDialog_Preview() {
             isSmallScreen = { false },
             stepIndex = 4,
             stepsLength = 4,
-            showProgressDialog = true,
+            isTakeOfferLoading = true,
             showSuccessDialog = false,
-            isInteractive = false,
+            isInteractive = true,
             onBack = {},
             onTakeOffer = {},
             onClose = {},
@@ -401,7 +403,7 @@ private fun TakeOfferReviewScreen_WithSuccessDialog_Preview() {
             isSmallScreen = { false },
             stepIndex = 4,
             stepsLength = 4,
-            showProgressDialog = false,
+            isTakeOfferLoading = false,
             showSuccessDialog = true,
             isInteractive = false,
             onBack = {},

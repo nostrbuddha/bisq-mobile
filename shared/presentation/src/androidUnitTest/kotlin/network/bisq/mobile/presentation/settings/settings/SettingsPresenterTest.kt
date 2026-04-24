@@ -4,6 +4,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -227,6 +228,8 @@ class SettingsPresenterTest {
             coVerify { settingsServiceFacade.setLanguageCode("de") }
             val state = presenter.uiState.value
             assertEquals("de", state.languageCode)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -248,6 +251,8 @@ class SettingsPresenterTest {
             val state = presenter.uiState.value
             assertEquals("en", state.languageCode) // Reverted to original
             coVerify { globalUiManager.showSnackbar("mobile.error.generic".i18n(), type = SnackbarType.ERROR, any()) }
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -453,12 +458,16 @@ class SettingsPresenterTest {
 
             // When
             presenter.onAction(SettingsUiAction.OnTradePriceToleranceSave)
+            assertTrue(presenter.uiState.value.isSavingTradePriceTolerance)
             advanceUntilIdle()
 
             // Then
             coVerify { settingsServiceFacade.setMaxTradePriceDeviation(0.07) } // 7% = 0.07
             val state = presenter.uiState.value
             assertFalse(state.hasChangesTradePriceTolerance)
+            assertFalse(state.isSavingTradePriceTolerance)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -775,6 +784,9 @@ class SettingsPresenterTest {
                     any(),
                 )
             }
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
+            assertFalse(presenter.uiState.value.isResettingDontShowAgainFlags)
         }
 
     @Test
@@ -796,6 +808,9 @@ class SettingsPresenterTest {
             // Then
             coVerify { settingsServiceFacade.resetAllDontShowAgainFlags() }
             coVerify { globalUiManager.showSnackbar("mobile.error.generic".i18n(), type = SnackbarType.ERROR, any()) }
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
+            assertFalse(presenter.uiState.value.isResettingDontShowAgainFlags)
         }
 
     // ========== PoW Ignore Tests ==========

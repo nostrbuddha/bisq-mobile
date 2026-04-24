@@ -147,6 +147,7 @@ fun SettingsContent(
                                     EditableFieldActions(
                                         onSave = { onAction(SettingsUiAction.OnTradePriceToleranceSave) },
                                         onCancel = { onAction(SettingsUiAction.OnTradePriceToleranceCancel) },
+                                        isSaveLoading = uiState.isSavingTradePriceTolerance,
                                     )
                                 }
                             } else {
@@ -182,6 +183,7 @@ fun SettingsContent(
                                     EditableFieldActions(
                                         onSave = { onAction(SettingsUiAction.OnNumDaysAfterRedactingTradeDataSave) },
                                         onCancel = { onAction(SettingsUiAction.OnNumDaysAfterRedactingTradeDataCancel) },
+                                        isSaveLoading = uiState.isSavingNumDaysAfterRedactingTradeData,
                                     )
                                 }
                             } else {
@@ -207,6 +209,7 @@ fun SettingsContent(
                         onClick = { onAction(SettingsUiAction.OnResetAllDontShowAgainClick) },
                         type = BisqButtonType.Outline,
                         fullWidth = true,
+                        isLoading = uiState.isResettingDontShowAgainFlags,
                     )
 
                     if (uiState.shouldShowPoWAdjustmentFactor) {
@@ -237,6 +240,7 @@ fun SettingsContent(
                                         EditableFieldActions(
                                             onSave = { onAction(SettingsUiAction.OnPowFactorSave) },
                                             onCancel = { onAction(SettingsUiAction.OnPowFactorCancel) },
+                                            isSaveLoading = uiState.isSavingPowFactor,
                                         )
                                     }
                                 } else {

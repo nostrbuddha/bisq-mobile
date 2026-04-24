@@ -95,6 +95,9 @@ class OpenTradePresenter(
     private val _showUndoIgnoreDialog = MutableStateFlow(false)
     val showUndoIgnoreDialog: StateFlow<Boolean> = _showUndoIgnoreDialog.asStateFlow()
 
+    private val _isUndoIgnoreInFlight = MutableStateFlow(false)
+    val isUndoIgnoreInFlight: StateFlow<Boolean> = _isUndoIgnoreInFlight.asStateFlow()
+
     private var _coroutineScope: CoroutineScope? = null
 
     fun initialize(
@@ -251,15 +254,17 @@ class OpenTradePresenter(
             log.e { "Expected user profile id to not be null when undoing ignore, but was null" }
             return
         }
+        _isUndoIgnoreInFlight.value = true
+        showLoading()
         presenterScope.launch {
-            disableInteractive()
             try {
                 userProfileServiceFacade.undoIgnoreUserProfile(id)
                 hideUndoIgnoreDialog()
             } catch (e: Exception) {
                 log.e(e) { "Failed to undo ignore user $id" }
             } finally {
-                enableInteractive()
+                hideLoading()
+                _isUndoIgnoreInFlight.value = false
             }
         }
     }

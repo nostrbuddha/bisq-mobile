@@ -1,15 +1,12 @@
 package network.bisq.mobile.presentation.report_user
 
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import network.bisq.mobile.data.replicated.chat.bisq_easy.open_trades.BisqEasyOpenTradeMessageModel
 import network.bisq.mobile.i18n.i18n
 import network.bisq.mobile.presentation.common.ui.components.atoms.BisqButton
@@ -82,31 +79,25 @@ private fun ReportUserDialogContent(
             bottomMessage = "${state.message.length}/${REPORT_USER_MAX_MESSAGE_LENGTH}",
         )
         BisqGap.V2()
-        if (state.isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(32.dp),
-                color = BisqTheme.colors.white,
-                strokeWidth = 2.dp,
-            )
-        } else {
-            BisqButton(
-                modifier =
-                    Modifier
-                        .fillMaxWidth(),
-                disabled = state.isReportButtonEnabled.not(),
-                text = "chat.reportToModerator.report".i18n(),
-                onClick = onReportClick,
-            )
-            BisqGap.VHalf()
-            BisqButton(
-                modifier =
-                    Modifier
-                        .fillMaxWidth(),
-                text = "action.cancel".i18n(),
-                type = BisqButtonType.Grey,
-                onClick = onDismiss,
-            )
-        }
+        BisqButton(
+            modifier =
+                Modifier
+                    .fillMaxWidth(),
+            disabled = state.isReportButtonEnabled.not(),
+            isLoading = state.isLoading,
+            text = "chat.reportToModerator.report".i18n(),
+            onClick = onReportClick,
+        )
+        BisqGap.VHalf()
+        BisqButton(
+            modifier =
+                Modifier
+                    .fillMaxWidth(),
+            text = "action.cancel".i18n(),
+            type = BisqButtonType.Grey,
+            disabled = state.isLoading,
+            onClick = onDismiss,
+        )
     }
 }
 

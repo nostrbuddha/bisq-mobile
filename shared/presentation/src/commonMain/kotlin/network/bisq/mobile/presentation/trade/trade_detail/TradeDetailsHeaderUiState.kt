@@ -33,7 +33,6 @@ data class TradeDetailsHeaderTradeUiState(
 
 data class TradeDetailsHeaderSessionUiState(
     val showDetails: Boolean = false,
-    val isInteractive: Boolean = true,
     val interruptTradeButtonText: String = "",
     val openMediationButtonText: String = "",
     val isInMediation: Boolean = false,
@@ -41,6 +40,8 @@ data class TradeDetailsHeaderSessionUiState(
     val paymentProof: String? = null,
     val receiverAddress: String? = null,
     val formattedTradeDuration: String = "",
+    val isInterruptActionInFlight: Boolean = false,
+    val isOpenMediationActionInFlight: Boolean = false,
 )
 
 fun TradeItemPresentationModel.toHeaderTradeUiState(

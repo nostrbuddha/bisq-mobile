@@ -22,6 +22,7 @@ fun BuyerState2a(
     RememberPresenterLifecycle(presenter)
 
     val selectedTrade by presenter.selectedTrade.collectAsState()
+    val isConfirmFiatSentLoading by presenter.isConfirmFiatSentLoading.collectAsState()
 
     val trade = selectedTrade ?: return
 
@@ -63,6 +64,7 @@ fun BuyerState2a(
             // Confirm payment of {0}
             text = "bisqEasy.tradeState.info.buyer.phase2a.confirmFiatSent".i18n(quoteAmount),
             onClick = { presenter.onConfirmFiatSent() },
+            isLoading = isConfirmFiatSentLoading,
         )
     }
 }

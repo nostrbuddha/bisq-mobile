@@ -174,6 +174,7 @@ private fun AccountsListState(
                     Modifier
                         .fillMaxWidth()
                         .padding(top = 16.dp),
+                disabled = uiState.isProcessing,
             )
         }
     }
@@ -251,6 +252,7 @@ private fun ColumnScope.PaymentAccountForm(
                             .padding(vertical = 4.dp),
                     text = "action.save".i18n(),
                     onClick = { onAction(PaymentAccountsUiAction.OnSaveAccountClick) },
+                    isLoading = uiState.isProcessing,
                 )
                 BisqButton(
                     modifier =
@@ -260,6 +262,7 @@ private fun ColumnScope.PaymentAccountForm(
                     text = "paymentAccounts.deleteAccount".i18n(),
                     type = BisqButtonType.Grey,
                     onClick = { onAction(PaymentAccountsUiAction.OnDeleteAccountClick) },
+                    isLoading = uiState.isProcessing,
                 )
                 BisqButton(
                     modifier =
@@ -269,6 +272,7 @@ private fun ColumnScope.PaymentAccountForm(
                     text = "action.cancel".i18n(),
                     type = BisqButtonType.Outline,
                     onClick = { onAction(PaymentAccountsUiAction.OnCancelAddEditAccountClick) },
+                    disabled = uiState.isProcessing,
                 )
             }
 
@@ -280,6 +284,7 @@ private fun ColumnScope.PaymentAccountForm(
                             .padding(vertical = 4.dp),
                     text = "paymentAccounts.createAccount".i18n(),
                     onClick = { onAction(PaymentAccountsUiAction.OnConfirmAddAccountClick) },
+                    isLoading = uiState.isProcessing,
                 )
                 BisqButton(
                     modifier =
@@ -289,6 +294,7 @@ private fun ColumnScope.PaymentAccountForm(
                     text = "action.cancel".i18n(),
                     type = BisqButtonType.Outline,
                     onClick = { onAction(PaymentAccountsUiAction.OnCancelAddEditAccountClick) },
+                    disabled = uiState.isProcessing,
                 )
             }
 
@@ -300,6 +306,7 @@ private fun ColumnScope.PaymentAccountForm(
                             .padding(vertical = 4.dp),
                     text = "action.edit".i18n(),
                     onClick = { onAction(PaymentAccountsUiAction.OnEditAccountClick) },
+                    disabled = uiState.isProcessing,
                 )
             }
         }

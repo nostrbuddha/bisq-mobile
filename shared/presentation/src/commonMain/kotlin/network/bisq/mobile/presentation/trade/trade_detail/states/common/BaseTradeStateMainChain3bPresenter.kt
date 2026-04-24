@@ -124,8 +124,11 @@ abstract class BaseTradeStateMainChain3bPresenter(
     private fun completeTrade() {
         presenterScope.launch {
             showLoading()
-            tradesServiceFacade.btcConfirmed()
-            hideLoading()
+            try {
+                tradesServiceFacade.btcConfirmed()
+            } finally {
+                hideLoading()
+            }
         }
     }
 

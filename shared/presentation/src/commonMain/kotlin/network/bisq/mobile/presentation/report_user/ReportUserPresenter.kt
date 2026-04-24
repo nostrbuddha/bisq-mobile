@@ -44,33 +44,41 @@ class ReportUserPresenter(
     }
 
     fun onReportClick() {
-        presenterScope.launch {
-            val message = _uiState.value.message
-            if (!::chatMessage.isInitialized) {
-                log.w { "ReportUserPresenter.onReportClick called before initialize" }
+        val message = _uiState.value.message
+        if (!::chatMessage.isInitialized) {
+            log.w { "ReportUserPresenter.onReportClick called before initialize" }
+            presenterScope.launch {
                 _effect.emit(
                     ReportUserEffect.ReportError(
                         "mobile.chat.reportToModerator.error".i18n(),
                         message,
                     ),
                 )
-                return@launch
             }
-            _uiState.update { it.copy(isLoading = true) }
-            userProfileServiceFacade
-                .reportUserProfile(
-                    chatMessage.senderUserProfile,
-                    message,
-                ).onSuccess {
-                    _effect.emit(ReportUserEffect.ReportSuccess)
-                }.onFailure {
-                    _effect.emit(
-                        ReportUserEffect.ReportError(
-                            "mobile.chat.reportToModerator.error".i18n(),
-                            message,
-                        ),
-                    )
-                }
+            return
+        }
+        _uiState.update { it.copy(isLoading = true) }
+        showLoading()
+        presenterScope.launch {
+            try {
+                userProfileServiceFacade
+                    .reportUserProfile(
+                        chatMessage.senderUserProfile,
+                        message,
+                    ).onSuccess {
+                        _effect.emit(ReportUserEffect.ReportSuccess)
+                    }.onFailure {
+                        _effect.emit(
+                            ReportUserEffect.ReportError(
+                                "mobile.chat.reportToModerator.error".i18n(),
+                                message,
+                            ),
+                        )
+                    }
+            } finally {
+                hideLoading()
+                _uiState.update { it.copy(isLoading = false) }
+            }
         }
     }
 }

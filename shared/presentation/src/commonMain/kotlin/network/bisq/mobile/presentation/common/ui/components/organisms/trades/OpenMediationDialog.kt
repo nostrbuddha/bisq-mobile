@@ -10,6 +10,7 @@ import network.bisq.mobile.presentation.common.ui.theme.BisqUIConstants
 fun OpenMediationDialog(
     onCancelConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    confirmButtonLoading: Boolean = false,
 ) {
     WarningConfirmationDialog(
         headline = "bisqEasy.mediation.request.confirm.headline".i18n(),
@@ -18,6 +19,7 @@ fun OpenMediationDialog(
         horizontalAlignment = Alignment.Start,
         marginTop = BisqUIConstants.ScreenPaddingHalf,
         verticalButtonPlacement = true,
+        confirmButtonLoading = confirmButtonLoading,
         onDismiss = onDismiss,
         onConfirm = onCancelConfirm,
     )

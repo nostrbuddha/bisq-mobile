@@ -1,5 +1,6 @@
 package network.bisq.mobile.presentation.trade.trade_detail.states.common
 
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -47,7 +48,7 @@ class State4PresenterTest {
     private val shareFileService: ShareFileService = mockk(relaxed = true)
     private val navigationManager: NavigationManager = mockk(relaxed = true)
 
-    private val globalUiManager by lazy { GlobalUiManager(testDispatcher) }
+    private val globalUiManager: GlobalUiManager = mockk(relaxed = true)
 
     private val testKoinModule =
         module {
@@ -65,6 +66,7 @@ class State4PresenterTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         startKoin { modules(testKoinModule) }
+        clearMocks(globalUiManager, answers = false, recordedCalls = true, childMocks = true)
         I18nSupport.initialize("en")
         GenericErrorHandler.clearGenericError()
     }
@@ -139,12 +141,14 @@ class State4PresenterTest {
 
             presenter.onAction(State4UiAction.OnConfirmCloseTrade)
 
+            assertTrue(presenter.uiState.value.isConfirmCloseTradeLoading)
+            waitUntil(timeoutMs = 2000) { !presenter.uiState.value.isConfirmCloseTradeLoading }
             coVerify(timeout = 500) { tradesServiceFacade.closeTrade() }
             coVerify(timeout = 500) { tradeReadStateRepository.clearId("t-ok") }
             verify(timeout = 500) { navigationManager.navigateBack(any()) }
             assertFalse(presenter.uiState.value.showCloseTradeDialog)
-            waitUntil(timeoutMs = 1000) { globalUiManager.showLoadingDialog.value == false }
-            assertFalse(globalUiManager.showLoadingDialog.value)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -159,10 +163,14 @@ class State4PresenterTest {
 
             presenter.onAction(State4UiAction.OnConfirmCloseTrade)
 
+            waitUntil(timeoutMs = 2000) { !presenter.uiState.value.isConfirmCloseTradeLoading }
             coVerify(timeout = 500) { tradesServiceFacade.closeTrade() }
             coVerify(timeout = 300, exactly = 0) { tradeReadStateRepository.clearId(any()) }
             verify(timeout = 300, exactly = 0) { navigationManager.navigateBack(any()) }
             assertFalse(presenter.uiState.value.showCloseTradeDialog)
+            assertFalse(presenter.uiState.value.isConfirmCloseTradeLoading)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
             waitUntil(timeoutMs = 500) { GenericErrorHandler.genericErrorMessage.value != null }
             assertEquals("boom", GenericErrorHandler.genericErrorMessage.value)
         }
@@ -180,6 +188,9 @@ class State4PresenterTest {
 
             coVerify(timeout = 300, exactly = 0) { tradesServiceFacade.closeTrade() }
             assertFalse(presenter.uiState.value.showCloseTradeDialog)
+            assertFalse(presenter.uiState.value.isConfirmCloseTradeLoading)
+            verify(exactly = 0) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 0) { globalUiManager.hideLoading() }
             waitUntil(timeoutMs = 500) { GenericErrorHandler.genericErrorMessage.value != null }
             assertEquals("No trade selected for closure", GenericErrorHandler.genericErrorMessage.value)
         }
@@ -228,6 +239,7 @@ class State4PresenterTest {
             presenter.onAction(State4UiAction.OnExportTradeClick)
 
             coVerify(timeout = 5000) { shareFileService.shareUtf8TextFile(any(), any()) }
+            waitUntil(timeoutMs = 500) { GenericErrorHandler.genericErrorMessage.value != null }
             assertEquals("share denied", GenericErrorHandler.genericErrorMessage.value)
         }
 

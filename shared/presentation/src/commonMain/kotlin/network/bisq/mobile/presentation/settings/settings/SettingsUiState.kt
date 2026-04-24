@@ -20,4 +20,8 @@ data class SettingsUiState(
     val hasChangesTradePriceTolerance: Boolean = false,
     val hasChangesNumDaysAfterRedactingTradeData: Boolean = false,
     val hasChangesPowFactor: Boolean = false,
+    val isSavingTradePriceTolerance: Boolean = false,
+    val isSavingNumDaysAfterRedactingTradeData: Boolean = false,
+    val isSavingPowFactor: Boolean = false,
+    val isResettingDontShowAgainFlags: Boolean = false,
 )

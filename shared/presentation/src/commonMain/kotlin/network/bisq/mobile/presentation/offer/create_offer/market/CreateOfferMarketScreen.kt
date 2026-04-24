@@ -29,7 +29,7 @@ fun CreateOfferMarketScreen() {
 
     val searchText by presenter.searchText.collectAsState()
     val filteredMarketList by presenter.marketListItemWithNumOffers.collectAsState()
-    val isInteractive by presenter.isInteractive.collectAsState()
+    val isInitialMarketsLoad by presenter.isInitialMarketsLoad.collectAsState()
     val selectedMarketItem by presenter.selectedMarketItem.collectAsState()
 
     MultiScreenWizardScaffold(
@@ -40,7 +40,7 @@ fun CreateOfferMarketScreen() {
         nextOnClick = { presenter.onNext() },
         useStaticScaffold = true,
         horizontalAlignment = Alignment.Start,
-        isInteractive = isInteractive,
+        isInteractive = !isInitialMarketsLoad,
         showUserAvatar = false,
         closeAction = true,
         onConfirmedClose = presenter::onClose,
@@ -59,7 +59,7 @@ fun CreateOfferMarketScreen() {
 
         BisqGap.V1()
 
-        if (isInteractive) {
+        if (!isInitialMarketsLoad) {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(BisqUIConstants.ScreenPadding),

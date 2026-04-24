@@ -25,15 +25,18 @@ open class UserAgreementPresenter(
     override fun onAcceptTerms() {
         showLoading()
         presenterScope.launch {
-            settingsServiceFacade
-                .confirmTacAccepted(true)
-                .onSuccess {
-                    navigateToOnboarding()
-                    showSnackbar("mobile.startup.agreement.welcome".i18n())
-                }.onFailure { exception ->
-                    handleError(exception)
-                }
-            hideLoading()
+            try {
+                settingsServiceFacade
+                    .confirmTacAccepted(true)
+                    .onSuccess {
+                        navigateToOnboarding()
+                        showSnackbar("mobile.startup.agreement.welcome".i18n())
+                    }.onFailure { exception ->
+                        handleError(exception)
+                    }
+            } finally {
+                hideLoading()
+            }
         }
     }
 

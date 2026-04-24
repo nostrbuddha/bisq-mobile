@@ -103,8 +103,8 @@ class UserProfilePresenter(
     private fun onSavePress() {
         val uiStateSnapshot = _uiState.value
         val selectedProfile = uiStateSnapshot.selectedUserProfile ?: return
-        disableInteractive()
         _uiState.update { it.copy(isBusyWithAction = true) }
+        showLoading()
         presenterScope.launch {
             try {
                 val na = getLocalizedNA()
@@ -125,47 +125,51 @@ class UserProfilePresenter(
                 log.e(e) { "Failed to save user profile settings" }
             } finally {
                 _uiState.update { it.copy(isBusyWithAction = false) }
-                enableInteractive()
+                hideLoading()
             }
         }
     }
 
     private fun onDeleteConfirm() {
         val profileId = _uiState.value.showDeleteConfirmationForProfile?.id ?: return
-        disableInteractive()
         _uiState.update { it.copy(isBusyWithAction = true, showDeleteConfirmationForProfile = null) }
+        showLoading()
         presenterScope.launch {
-            userProfileServiceFacade
-                .deleteUserProfile(profileId)
-                .onSuccess {
-                    showSnackbar("mobile.settings.userProfile.deleteSuccess".i18n())
-                }.onFailure { e ->
-                    log.e(e) { "Failed to delete user profile" }
-                    onAction(UserProfileUiAction.OnDeleteError)
-                }
-            _uiState.update { it.copy(isBusyWithAction = false) }
-            enableInteractive()
+            try {
+                userProfileServiceFacade
+                    .deleteUserProfile(profileId)
+                    .onSuccess {
+                        showSnackbar("mobile.settings.userProfile.deleteSuccess".i18n())
+                    }.onFailure { e ->
+                        log.e(e) { "Failed to delete user profile" }
+                        onAction(UserProfileUiAction.OnDeleteError)
+                    }
+            } finally {
+                _uiState.update { it.copy(isBusyWithAction = false) }
+                hideLoading()
+            }
         }
     }
 
     private fun onUserProfileSelect(profileId: String) {
         if (_uiState.value.selectedUserProfile?.id == profileId) return
 
-        disableInteractive()
         _uiState.update { it.copy(isBusyWithAction = true) }
+        showLoading()
         presenterScope.launch {
-            userProfileServiceFacade
-                .selectUserProfile(profileId)
-                .onSuccess {
-                    showSnackbar("mobile.settings.userProfile.selectSuccess".i18n())
-                    _uiState.update { it.copy(isBusyWithAction = false) }
-                    enableInteractive()
-                }.onFailure { e ->
-                    log.e(e) { "Failed to change user profile" }
-                    showSnackbar("mobile.settings.userProfile.selectFailure".i18n(), type = SnackbarType.ERROR)
-                    _uiState.update { it.copy(isBusyWithAction = false) }
-                    enableInteractive()
-                }
+            try {
+                userProfileServiceFacade
+                    .selectUserProfile(profileId)
+                    .onSuccess {
+                        showSnackbar("mobile.settings.userProfile.selectSuccess".i18n())
+                    }.onFailure { e ->
+                        log.e(e) { "Failed to change user profile" }
+                        showSnackbar("mobile.settings.userProfile.selectFailure".i18n(), type = SnackbarType.ERROR)
+                    }
+            } finally {
+                _uiState.update { it.copy(isBusyWithAction = false) }
+                hideLoading()
+            }
         }
     }
 

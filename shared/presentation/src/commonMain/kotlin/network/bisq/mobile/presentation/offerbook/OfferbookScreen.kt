@@ -55,6 +55,7 @@ fun OfferbookScreen() {
     val showNotEnoughReputationDialog by presenter.showNotEnoughReputationDialog.collectAsState()
     val showTradeRestrictedDialog by presenter.showTradeRestrictedDialog.collectAsState()
     val isInteractive by presenter.isInteractive.collectAsState()
+    val isCreateOfferInFlight by presenter.isCreateOfferInFlight.collectAsState()
     val selectedMarket by presenter.selectedMarket.collectAsState()
 
     // Show a loading overlay only while data is being fetched for the selected market
@@ -74,6 +75,7 @@ fun OfferbookScreen() {
             BisqFABAddButton(
                 onClick = { presenter.createOffer() },
                 enabled = !presenter.isDemo(),
+                isLoading = isCreateOfferInFlight,
             )
         },
         isInteractive = isInteractive,

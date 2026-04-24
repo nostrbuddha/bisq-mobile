@@ -86,11 +86,15 @@ fun State4Content(
                     text = "bisqEasy.tradeState.info.phase4.exportTrade".i18n(), // Export trade data
                     type = BisqButtonType.Grey,
                     onClick = { onAction(State4UiAction.OnExportTradeClick) },
+                    isLoading = uiState.isExportTradeLoading,
+                    disabled = uiState.isConfirmCloseTradeLoading,
                 )
                 BisqGap.H1()
                 BisqButton(
                     text = "bisqEasy.tradeState.info.phase4.leaveChannel".i18n(), // Close trade
                     onClick = { onAction(State4UiAction.OnCloseTradeClick) },
+                    isLoading = uiState.isConfirmCloseTradeLoading,
+                    disabled = uiState.isExportTradeLoading,
                 )
             }
         }

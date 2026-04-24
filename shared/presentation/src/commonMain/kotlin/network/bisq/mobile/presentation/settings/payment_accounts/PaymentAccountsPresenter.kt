@@ -182,21 +182,28 @@ open class PaymentAccountsPresenter(
             return
         }
 
+        _uiState.update { it.copy(isProcessing = true) }
+        showLoading()
         presenterScope.launch {
-            showLoading()
-            val newAccount = createAccount(newName, newDescription)
-            userDefinedAccountsServiceFacade
-                .addAccount(newAccount)
-                .onSuccess {
-                    showSnackbar(
-                        "mobile.user.paymentAccounts.createAccount.notifications.name.accountCreated".i18n(),
-                        type = SnackbarType.SUCCESS,
-                    )
-                    _uiState.update { it.copy(showAddAccountState = false) }
-                }.onFailure { exception ->
-                    handleError(exception)
-                }
-            hideLoading()
+            try {
+                val newAccount = createAccount(newName, newDescription)
+                userDefinedAccountsServiceFacade
+                    .addAccount(newAccount)
+                    .onSuccess {
+                        showSnackbar(
+                            "mobile.user.paymentAccounts.createAccount.notifications.name.accountCreated".i18n(),
+                            type = SnackbarType.SUCCESS,
+                        )
+                        _uiState.update { it.copy(showAddAccountState = false) }
+                    }.onFailure { exception ->
+                        handleError(exception)
+                    }
+            } catch (e: Exception) {
+                handleError(e)
+            } finally {
+                hideLoading()
+                _uiState.update { it.copy(isProcessing = false) }
+            }
         }
     }
 
@@ -211,19 +218,26 @@ open class PaymentAccountsPresenter(
             return
         }
 
+        _uiState.update { it.copy(isProcessing = true) }
+        showLoading()
         presenterScope.launch {
-            showLoading()
-            val newAccount = createAccount(newName, newDescription)
-            userDefinedAccountsServiceFacade
-                .saveAccount(newAccount)
-                .onSuccess {
-                    showSnackbar(
-                        "mobile.user.paymentAccounts.createAccount.notifications.name.accountUpdated".i18n(),
-                    )
-                }.onFailure { exception ->
-                    handleError(exception)
-                }
-            hideLoading()
+            try {
+                val newAccount = createAccount(newName, newDescription)
+                userDefinedAccountsServiceFacade
+                    .saveAccount(newAccount)
+                    .onSuccess {
+                        showSnackbar(
+                            "mobile.user.paymentAccounts.createAccount.notifications.name.accountUpdated".i18n(),
+                        )
+                    }.onFailure { exception ->
+                        handleError(exception)
+                    }
+            } catch (e: Exception) {
+                handleError(e)
+            } finally {
+                hideLoading()
+                _uiState.update { it.copy(isProcessing = false) }
+            }
         }
     }
 
@@ -231,22 +245,33 @@ open class PaymentAccountsPresenter(
         val state = _uiState.value
         val selectedAccount = state.accounts.getOrNull(state.selectedAccountIndex)
         if (selectedAccount == null) return
+        _uiState.update { it.copy(isProcessing = true) }
+        showLoading()
         presenterScope.launch {
-            showLoading()
-            userDefinedAccountsServiceFacade
-                .deleteAccount(selectedAccount)
-                .onSuccess {
-                    showSnackbar(
-                        "mobile.user.paymentAccounts.createAccount.notifications.name.accountDeleted".i18n(),
-                    )
-                }.onFailure { exception ->
-                    val defaultMessage =
-                        "mobile.user.paymentAccounts.createAccount.notifications.name.unableToDelete".i18n(
-                            selectedAccount.accountName,
+            try {
+                userDefinedAccountsServiceFacade
+                    .deleteAccount(selectedAccount)
+                    .onSuccess {
+                        showSnackbar(
+                            "mobile.user.paymentAccounts.createAccount.notifications.name.accountDeleted".i18n(),
                         )
-                    handleError(exception, defaultMessage)
-                }
-            hideLoading()
+                    }.onFailure { exception ->
+                        val defaultMessage =
+                            "mobile.user.paymentAccounts.createAccount.notifications.name.unableToDelete".i18n(
+                                selectedAccount.accountName,
+                            )
+                        handleError(exception, defaultMessage)
+                    }
+            } catch (e: Exception) {
+                val defaultMessage =
+                    "mobile.user.paymentAccounts.createAccount.notifications.name.unableToDelete".i18n(
+                        selectedAccount.accountName,
+                    )
+                handleError(e, defaultMessage)
+            } finally {
+                hideLoading()
+                _uiState.update { it.copy(isProcessing = false) }
+            }
         }
     }
 

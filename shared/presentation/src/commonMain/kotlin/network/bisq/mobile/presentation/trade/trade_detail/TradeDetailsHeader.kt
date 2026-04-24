@@ -252,7 +252,6 @@ fun TradeDetailsHeaderContent(
         ) {
             IconButton(
                 onClick = { onAction(TradeDetailsHeaderUiAction.ToggleHeader) },
-                enabled = sessionUiState.isInteractive,
             ) {
                 UpIcon(
                     modifier =
@@ -460,7 +459,6 @@ private fun previewTradeDetailsHeaderStates(
         ) to
             TradeDetailsHeaderSessionUiState(
                 showDetails = showDetails,
-                isInteractive = true,
                 interruptTradeButtonText = "",
                 openMediationButtonText = "",
                 isInMediation = false,
@@ -495,7 +493,6 @@ private fun previewTradeDetailsHeaderStates(
         ) to
             TradeDetailsHeaderSessionUiState(
                 showDetails = showDetails,
-                isInteractive = true,
                 interruptTradeButtonText = if (isCompleted) "" else "Cancel trade",
                 openMediationButtonText = if (isCompleted) "" else "Request mediation",
                 isInMediation = false,

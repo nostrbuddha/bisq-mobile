@@ -81,19 +81,22 @@ open class SettingsPresenter(
     private fun setLanguageCode(langCode: String) {
         presenterScope.launch {
             showLoading()
-            settingsServiceFacade
-                .setLanguageCode(langCode)
-                .onSuccess {
-                    try {
-                        setDefaultLocale(langCode)
-                        _uiState.update { it.copy(languageCode = langCode) }
-                    } catch (e: Exception) {
-                        showSnackbar(e.message ?: "mobile.error.generic".i18n(), SnackbarType.ERROR)
+            try {
+                settingsServiceFacade
+                    .setLanguageCode(langCode)
+                    .onSuccess {
+                        try {
+                            setDefaultLocale(langCode)
+                            _uiState.update { it.copy(languageCode = langCode) }
+                        } catch (e: Exception) {
+                            showSnackbar(e.message ?: "mobile.error.generic".i18n(), SnackbarType.ERROR)
+                        }
+                    }.onFailure { exception ->
+                        handleError(exception)
                     }
-                }.onFailure { exception ->
-                    handleError(exception)
-                }
-            hideLoading()
+            } finally {
+                hideLoading()
+            }
         }
     }
 
@@ -107,27 +110,33 @@ open class SettingsPresenter(
             _uiState.update { it.copy(supportedLanguageCodes = next) }
 
             showLoading()
-            settingsServiceFacade
-                .setSupportedLanguageCodes(next)
-                .onFailure { exception ->
-                    _uiState.update { it.copy(supportedLanguageCodes = current) }
-                    handleError(exception, position = SnackbarPosition.TOP)
-                }
-            hideLoading()
+            try {
+                settingsServiceFacade
+                    .setSupportedLanguageCodes(next)
+                    .onFailure { exception ->
+                        _uiState.update { it.copy(supportedLanguageCodes = current) }
+                        handleError(exception, position = SnackbarPosition.TOP)
+                    }
+            } finally {
+                hideLoading()
+            }
         }
     }
 
     private fun setCloseOfferWhenTradeTaken(value: Boolean) {
         presenterScope.launch {
             showLoading()
-            _uiState.update { it.copy(closeOfferWhenTradeTaken = value) }
-            settingsServiceFacade
-                .setCloseMyOfferWhenTaken(value)
-                .onFailure { exception ->
-                    _uiState.update { it.copy(closeOfferWhenTradeTaken = !value) }
-                    handleError(exception)
-                }
-            hideLoading()
+            try {
+                _uiState.update { it.copy(closeOfferWhenTradeTaken = value) }
+                settingsServiceFacade
+                    .setCloseMyOfferWhenTaken(value)
+                    .onFailure { exception ->
+                        _uiState.update { it.copy(closeOfferWhenTradeTaken = !value) }
+                        handleError(exception)
+                    }
+            } finally {
+                hideLoading()
+            }
         }
     }
 
@@ -152,22 +161,29 @@ open class SettingsPresenter(
     }
 
     private fun onTradePriceToleranceSave() {
+        _uiState.update {
+            it.copy(tradePriceTolerance = it.tradePriceTolerance.validate())
+        }
+        val currentEntry = _uiState.value.tradePriceTolerance
+        if (!currentEntry.isValid) return
+        val parsedValue = currentEntry.value.toDoubleOrNullLocaleAware() ?: return
+        val newDeviation = parsedValue / 100
+
+        _uiState.update { it.copy(isSavingTradePriceTolerance = true) }
+        showLoading()
         presenterScope.launch {
-            _uiState.update {
-                it.copy(tradePriceTolerance = it.tradePriceTolerance.validate())
-            }
-            val currentEntry = _uiState.value.tradePriceTolerance
-            if (currentEntry.isValid) {
-                val parsedValue = currentEntry.value.toDoubleOrNullLocaleAware()
-                if (parsedValue != null) {
-                    val newDeviation = parsedValue / 100
-                    settingsServiceFacade.setMaxTradePriceDeviation(newDeviation)
-                    // Update original value and reset hasChanges after successful save
-                    originalMaxTradePriceDeviation = newDeviation
-                    _uiState.update {
-                        it.copy(hasChangesTradePriceTolerance = false)
-                    }
-                }
+            try {
+                settingsServiceFacade
+                    .setMaxTradePriceDeviation(newDeviation)
+                    .onSuccess {
+                        originalMaxTradePriceDeviation = newDeviation
+                        _uiState.update {
+                            it.copy(hasChangesTradePriceTolerance = false)
+                        }
+                    }.onFailure { handleError(it) }
+            } finally {
+                hideLoading()
+                _uiState.update { it.copy(isSavingTradePriceTolerance = false) }
             }
         }
     }
@@ -203,21 +219,28 @@ open class SettingsPresenter(
     }
 
     private fun onNumDaysAfterRedactingTradeDataSave() {
+        _uiState.update {
+            it.copy(numDaysAfterRedactingTradeData = it.numDaysAfterRedactingTradeData.validate())
+        }
+        val currentEntry = _uiState.value.numDaysAfterRedactingTradeData
+        if (!currentEntry.isValid) return
+        val parsedValue = currentEntry.value.toIntOrNull() ?: return
+
+        _uiState.update { it.copy(isSavingNumDaysAfterRedactingTradeData = true) }
+        showLoading()
         presenterScope.launch {
-            _uiState.update {
-                it.copy(numDaysAfterRedactingTradeData = it.numDaysAfterRedactingTradeData.validate())
-            }
-            val currentEntry = _uiState.value.numDaysAfterRedactingTradeData
-            if (currentEntry.isValid) {
-                val parsedValue = currentEntry.value.toIntOrNull()
-                if (parsedValue != null) {
-                    settingsServiceFacade.setNumDaysAfterRedactingTradeData(parsedValue)
-                    // Update original value and reset hasChanges after successful save
-                    originalNumDaysAfterRedactingTradeData = parsedValue
-                    _uiState.update {
-                        it.copy(hasChangesNumDaysAfterRedactingTradeData = false)
-                    }
-                }
+            try {
+                settingsServiceFacade
+                    .setNumDaysAfterRedactingTradeData(parsedValue)
+                    .onSuccess {
+                        originalNumDaysAfterRedactingTradeData = parsedValue
+                        _uiState.update {
+                            it.copy(hasChangesNumDaysAfterRedactingTradeData = false)
+                        }
+                    }.onFailure { handleError(it) }
+            } finally {
+                hideLoading()
+                _uiState.update { it.copy(isSavingNumDaysAfterRedactingTradeData = false) }
             }
         }
     }
@@ -237,14 +260,17 @@ open class SettingsPresenter(
     private fun setUseAnimations(value: Boolean) {
         presenterScope.launch {
             showLoading()
-            _uiState.update { it.copy(useAnimations = value) }
-            settingsServiceFacade
-                .setUseAnimations(value)
-                .onFailure { exception ->
-                    _uiState.update { it.copy(useAnimations = !value) }
-                    handleError(exception)
-                }
-            hideLoading()
+            try {
+                _uiState.update { it.copy(useAnimations = value) }
+                settingsServiceFacade
+                    .setUseAnimations(value)
+                    .onFailure { exception ->
+                        _uiState.update { it.copy(useAnimations = !value) }
+                        handleError(exception)
+                    }
+            } finally {
+                hideLoading()
+            }
         }
     }
 
@@ -269,20 +295,28 @@ open class SettingsPresenter(
     }
 
     private fun onPowFactorSave() {
+        _uiState.update {
+            it.copy(powFactor = it.powFactor.validate())
+        }
+        val currentEntry = _uiState.value.powFactor
+        if (!currentEntry.isValid) return
+        val parsedValue = currentEntry.value.toDoubleOrNullLocaleAware() ?: return
+
+        _uiState.update { it.copy(isSavingPowFactor = true) }
+        showLoading()
         presenterScope.launch {
-            _uiState.update {
-                it.copy(powFactor = it.powFactor.validate())
-            }
-            val currentEntry = _uiState.value.powFactor
-            if (currentEntry.isValid) {
-                currentEntry.value.toDoubleOrNullLocaleAware()?.let { parsedValue ->
-                    settingsServiceFacade.setDifficultyAdjustmentFactor(parsedValue)
-                    // Update original value and reset hasChanges after successful save
-                    originalDifficultyAdjustmentFactor = parsedValue
-                    _uiState.update {
-                        it.copy(hasChangesPowFactor = false)
-                    }
-                }
+            try {
+                settingsServiceFacade
+                    .setDifficultyAdjustmentFactor(parsedValue)
+                    .onSuccess {
+                        originalDifficultyAdjustmentFactor = parsedValue
+                        _uiState.update {
+                            it.copy(hasChangesPowFactor = false)
+                        }
+                    }.onFailure { handleError(it) }
+            } finally {
+                hideLoading()
+                _uiState.update { it.copy(isSavingPowFactor = false) }
             }
         }
     }
@@ -299,29 +333,36 @@ open class SettingsPresenter(
     private fun setIgnorePow(value: Boolean) {
         presenterScope.launch {
             showLoading()
-            _uiState.update { it.copy(ignorePow = value) }
-            settingsServiceFacade
-                .setIgnoreDiffAdjustmentFromSecManager(value)
-                .onFailure { exception ->
-                    _uiState.update { it.copy(ignorePow = !value) }
-                    handleError(exception)
-                }
-            hideLoading()
+            try {
+                _uiState.update { it.copy(ignorePow = value) }
+                settingsServiceFacade
+                    .setIgnoreDiffAdjustmentFromSecManager(value)
+                    .onFailure { exception ->
+                        _uiState.update { it.copy(ignorePow = !value) }
+                        handleError(exception)
+                    }
+            } finally {
+                hideLoading()
+            }
         }
     }
 
     private fun onResetAllDontShowAgainClick() {
+        _uiState.update { it.copy(isResettingDontShowAgainFlags = true) }
+        showLoading()
         presenterScope.launch {
-            showLoading()
-            settingsServiceFacade
-                .resetAllDontShowAgainFlags()
-                .onSuccess {
-                    // TODO:i18n Reset flags successfully
-                    showSnackbar("mobile.settings.resetFlagsSuccess".i18n())
-                }.onFailure { exception ->
-                    handleError(exception)
-                }
-            hideLoading()
+            try {
+                settingsServiceFacade
+                    .resetAllDontShowAgainFlags()
+                    .onSuccess {
+                        showSnackbar("mobile.settings.resetFlagsSuccess".i18n())
+                    }.onFailure { exception ->
+                        handleError(exception)
+                    }
+            } finally {
+                hideLoading()
+                _uiState.update { it.copy(isResettingDontShowAgainFlags = false) }
+            }
         }
     }
 

@@ -103,6 +103,9 @@ open class OfferbookPresenter(
     private val _showNotEnoughReputationDialog = MutableStateFlow(false)
     val showNotEnoughReputationDialog: StateFlow<Boolean> = _showNotEnoughReputationDialog.asStateFlow()
 
+    private val _isCreateOfferInFlight = MutableStateFlow(false)
+    val isCreateOfferInFlight: StateFlow<Boolean> = _isCreateOfferInFlight.asStateFlow()
+
     val selectedMarket get() = marketPriceServiceFacade.selectedMarketPriceItem
 
     val userProfileIconProvider: suspend (UserProfileVO) -> PlatformImage get() = userProfileServiceFacade::getUserProfileIcon
@@ -406,24 +409,27 @@ open class OfferbookPresenter(
                 showSnackbar("mobile.bisqEasy.offerbook.unableToDeleteOffer".i18n(), type = SnackbarType.ERROR)
                 return@runCatching
             }
+            showLoading()
             presenterScope.launch {
-                showLoading()
-                val result =
-                    offersServiceFacade
-                        .deleteOffer(selectedOffer.offerId)
-                        .getOrDefault(false)
-                log.d { "delete offer success $result" }
-                hideLoading()
-                if (result) {
-                    deselectOffer()
-                } else {
-                    log.w { "Failed to delete offer ${selectedOffer.offerId}" }
-                    showSnackbar(
-                        "mobile.bisqEasy.offerbook.failedToDeleteOffer".i18n(
-                            selectedOffer.offerId,
-                        ),
-                        type = SnackbarType.ERROR,
-                    )
+                try {
+                    val result =
+                        offersServiceFacade
+                            .deleteOffer(selectedOffer.offerId)
+                            .getOrDefault(false)
+                    log.d { "delete offer success $result" }
+                    if (result) {
+                        deselectOffer()
+                    } else {
+                        log.w { "Failed to delete offer ${selectedOffer.offerId}" }
+                        showSnackbar(
+                            "mobile.bisqEasy.offerbook.failedToDeleteOffer".i18n(
+                                selectedOffer.offerId,
+                            ),
+                            type = SnackbarType.ERROR,
+                        )
+                    }
+                } finally {
+                    hideLoading()
                 }
             }
         }.onFailure {
@@ -651,7 +657,8 @@ open class OfferbookPresenter(
             _showTradeRestrictedDialog.value = activeAlert.toAlertNotificationUiState()
             return
         }
-        disableInteractive()
+        _isCreateOfferInFlight.value = true
+        showLoading()
         try {
             val selectedMarket = offersServiceFacade.selectedOfferbookMarket.value.market
             createOfferCoordinator.onStartCreateOffer()
@@ -669,12 +676,13 @@ open class OfferbookPresenter(
                 createOfferCoordinator.skipCurrency = false
             }
 
-            enableInteractive()
             navigateTo(NavRoute.CreateOfferDirection)
         } catch (e: Exception) {
-            enableInteractive()
             log.e(e) { "Failed to create offer" }
             showSnackbar(if (isDemo()) "mobile.bisqEasy.offerbook.createOfferDisabledInDemoMode".i18n() else "mobile.bisqEasy.offerbook.cannotCreateOffer".i18n(), type = SnackbarType.ERROR)
+        } finally {
+            hideLoading()
+            _isCreateOfferInFlight.value = false
         }
     }
 

@@ -5,6 +5,8 @@ import network.bisq.mobile.data.replicated.presentation.open_trades.TradeItemPre
 data class State4UiState(
     val trade: TradeItemPresentationModel? = null,
     val showCloseTradeDialog: Boolean = false,
+    val isConfirmCloseTradeLoading: Boolean = false,
+    val isExportTradeLoading: Boolean = false,
     val myDirectionLabel: String = "",
     val myOutcomeLabel: String = "",
 )

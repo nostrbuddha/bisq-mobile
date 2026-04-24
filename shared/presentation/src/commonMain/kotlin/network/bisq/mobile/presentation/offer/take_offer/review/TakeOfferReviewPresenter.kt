@@ -54,12 +54,8 @@ class TakeOfferReviewPresenter(
     private val takeOfferStatus: MutableStateFlow<TakeOfferStatus?> = MutableStateFlow(null)
     private val takeOfferErrorMessage: MutableStateFlow<String?> = MutableStateFlow(null)
 
-    private val _showTakeOfferProgressDialog = MutableStateFlow(false)
-    val showTakeOfferProgressDialog: StateFlow<Boolean> = _showTakeOfferProgressDialog.asStateFlow()
-
-    private fun setShowTakeOfferProgressDialog(value: Boolean) {
-        _showTakeOfferProgressDialog.value = value
-    }
+    private val _isTakeOfferLoading = MutableStateFlow(false)
+    val isTakeOfferLoading: StateFlow<Boolean> = _isTakeOfferLoading.asStateFlow()
 
     private val _showTakeOfferSuccessDialog = MutableStateFlow(false)
     val showTakeOfferSuccessDialog: StateFlow<Boolean> = _showTakeOfferSuccessDialog.asStateFlow()
@@ -127,31 +123,33 @@ class TakeOfferReviewPresenter(
     }
 
     fun onTakeOffer() {
-        setShowTakeOfferProgressDialog(true)
-        disableInteractive()
+        if (isDemo()) {
+            presenterScope.launch {
+                showSnackbar("Take offer is disabled in demo mode", type = SnackbarType.ERROR)
+            }
+            return
+        }
 
+        _isTakeOfferLoading.value = true
+        showLoading()
         presenterScope.launch {
             try {
-                if (isDemo()) {
-                    showSnackbar("Take offer is disabled in demo mode", type = SnackbarType.ERROR)
-                } else {
-                    val (statusFlow, errorFlow) = takeOfferCoordinator.takeOffer()
+                val (statusFlow, errorFlow) = takeOfferCoordinator.takeOffer()
 
-                    // The stateFlow objects are set in the ioScope in the service. Thus we need to map them to the presenterScope.
-                    presenterScope.launch {
-                        statusFlow.collect { takeOfferStatus.value = it }
-                    }
-                    presenterScope.launch {
-                        errorFlow.collect { takeOfferErrorMessage.value = it }
-                    }
+                // The stateFlow objects are set in the ioScope in the service. Thus we need to map them to the presenterScope.
+                presenterScope.launch {
+                    statusFlow.collect { takeOfferStatus.value = it }
+                }
+                presenterScope.launch {
+                    errorFlow.collect { takeOfferErrorMessage.value = it }
                 }
             } catch (e: Exception) {
                 log.e("Take offer failed", e)
                 takeOfferErrorMessage.value =
                     e.message ?: ("mobile.takeOffer.failedWithException".i18n(e.toString().truncate(50)))
             } finally {
-                setShowTakeOfferProgressDialog(false)
-                enableInteractive()
+                _isTakeOfferLoading.value = false
+                hideLoading()
             }
         }
     }

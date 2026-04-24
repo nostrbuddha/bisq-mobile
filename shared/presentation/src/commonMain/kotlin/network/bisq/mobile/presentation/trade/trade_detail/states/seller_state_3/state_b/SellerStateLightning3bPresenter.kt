@@ -18,6 +18,9 @@ class SellerStateLightning3bPresenter(
     private val _buyerHasConfirmedBitcoinReceipt: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val buyerHasConfirmedBitcoinReceipt: StateFlow<Boolean> = _buyerHasConfirmedBitcoinReceipt.asStateFlow()
 
+    private val _isBtcConfirmedLoading = MutableStateFlow(false)
+    val isBtcConfirmedLoading = _isBtcConfirmedLoading.asStateFlow()
+
     fun setBuyerHasConfirmedBitcoinReceipt(value: Boolean) {
         _buyerHasConfirmedBitcoinReceipt.value = value
     }
@@ -53,10 +56,19 @@ class SellerStateLightning3bPresenter(
     }
 
     fun skipWaiting() {
+        _isBtcConfirmedLoading.value = true
+        showLoading()
         presenterScope.launch {
-            showLoading()
-            tradesServiceFacade.btcConfirmed()
-            hideLoading()
+            try {
+                tradesServiceFacade
+                    .btcConfirmed()
+                    .onFailure { handleError(it) }
+            } catch (e: Exception) {
+                handleError(e)
+            } finally {
+                hideLoading()
+                _isBtcConfirmedLoading.value = false
+            }
         }
     }
 

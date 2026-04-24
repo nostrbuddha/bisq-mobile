@@ -50,6 +50,9 @@ class InterruptedTradePresenter(
     private val _showMediationRequestedDialog: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val showMediationRequestedDialog: StateFlow<Boolean> = _showMediationRequestedDialog.asStateFlow()
 
+    private val _isProcessing = MutableStateFlow(false)
+    val isProcessing: StateFlow<Boolean> = _isProcessing.asStateFlow()
+
     override fun onViewAttached() {
         super.onViewAttached()
         require(tradesServiceFacade.selectedTrade.value != null)
@@ -175,55 +178,64 @@ class InterruptedTradePresenter(
 
     fun onCloseTrade() {
         val trade = selectedTrade.value ?: return
+        _isProcessing.value = true
+        showLoading()
         presenterScope.launch {
-            showLoading()
-            val result = tradesServiceFacade.closeTrade()
-            if (result.isFailure) {
-                val msg = result.exceptionOrNull()?.message ?: ""
-                GenericErrorHandler.handleGenericError(
-                    "mobile.bisqEasy.openTrades.closeTrade.failed".i18n(msg),
-                )
-                hideLoading()
-                return@launch
-            }
-
-            withContext(Dispatchers.IO) {
-                // On success, clear read state. If this fails, report but still navigate back.
-                runCatching {
-                    tradeReadStateRepository.clearId(trade.tradeId)
-                }.onFailure { ex ->
+            try {
+                val result = tradesServiceFacade.closeTrade()
+                if (result.isFailure) {
+                    val msg = result.exceptionOrNull()?.message ?: ""
                     GenericErrorHandler.handleGenericError(
-                        "mobile.bisqEasy.openTrades.clearReadState.failed".i18n(ex.message ?: ""),
+                        "mobile.bisqEasy.openTrades.closeTrade.failed".i18n(msg),
                     )
+                    return@launch
                 }
-            }
 
-            hideLoading()
-            navigateBack()
+                withContext(Dispatchers.IO) {
+                    // On success, clear read state. If this fails, report but still navigate back.
+                    runCatching {
+                        tradeReadStateRepository.clearId(trade.tradeId)
+                    }.onFailure { ex ->
+                        GenericErrorHandler.handleGenericError(
+                            "mobile.bisqEasy.openTrades.clearReadState.failed".i18n(ex.message ?: ""),
+                        )
+                    }
+                }
+
+                navigateBack()
+            } finally {
+                hideLoading()
+                _isProcessing.value = false
+            }
         }
     }
 
     fun onReportToMediator() {
         val trade = selectedTrade.value
         if (trade == null) return
+        _isProcessing.value = true
+        showLoading()
         presenterScope.launch {
-            showLoading()
-            mediationServiceFacade
-                .reportToMediator(trade)
-                .onSuccess {
-                    _showMediationRequestedDialog.value = true
-                }.onFailure { error ->
-                    when (error) {
-                        is MediatorNotAvailableException -> {
-                            _showNoMediatorAvailableWarningDialog.value = true
-                        }
+            try {
+                mediationServiceFacade
+                    .reportToMediator(trade)
+                    .onSuccess {
+                        _showMediationRequestedDialog.value = true
+                    }.onFailure { error ->
+                        when (error) {
+                            is MediatorNotAvailableException -> {
+                                _showNoMediatorAvailableWarningDialog.value = true
+                            }
 
-                        else -> {
-                            showSnackbar("mobile.error.generic".i18n(), SnackbarType.ERROR)
+                            else -> {
+                                showSnackbar("mobile.error.generic".i18n(), SnackbarType.ERROR)
+                            }
                         }
                     }
-                }
-            hideLoading()
+            } finally {
+                hideLoading()
+                _isProcessing.value = false
+            }
         }
     }
 
@@ -243,5 +255,6 @@ class InterruptedTradePresenter(
         _reportToMediatorButtonVisible.value = false
         _showNoMediatorAvailableWarningDialog.value = false
         _showMediationRequestedDialog.value = false
+        _isProcessing.value = false
     }
 }

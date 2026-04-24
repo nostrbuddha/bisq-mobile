@@ -13,4 +13,5 @@ data class PaymentAccountsUiState(
     val showDeleteConfirmationDialog: Boolean = false,
     val showEditAccountState: Boolean = false,
     val showAddAccountState: Boolean = false,
+    val isProcessing: Boolean = false,
 )

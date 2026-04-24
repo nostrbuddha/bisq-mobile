@@ -72,9 +72,11 @@ fun OpenTradeScreen(tradeId: String) {
     val tradeCloseType by headerPresenter.tradeCloseType.collectAsState()
     val showInterruptionConfirmationDialog by headerPresenter.showInterruptionConfirmationDialog.collectAsState()
     val showMediationConfirmationDialog by headerPresenter.showMediationConfirmationDialog.collectAsState()
+    val headerSessionUiState by headerPresenter.sessionUiState.collectAsState()
     val showTradeNotFoundDialog by presenter.showTradeNotFoundDialog.collectAsState()
     val mediationError by headerPresenter.mediationError.collectAsState()
     val showUndoIgnoreDialog by presenter.showUndoIgnoreDialog.collectAsState()
+    val isUndoIgnoreInFlight by presenter.isUndoIgnoreInFlight.collectAsState()
     val newMsgCount by presenter.newMsgCount.collectAsState()
     val lastChatMsg by presenter.lastChatMsg.collectAsState()
     val isInteractive by presenter.isInteractive.collectAsState()
@@ -224,6 +226,7 @@ fun OpenTradeScreen(tradeId: String) {
             onDismiss = { headerPresenter.onCloseInterruptionConfirmationDialog() },
             isBuyer = headerPresenter.directionEnum.isBuy,
             isRejection = tradeCloseType == TradeDetailsHeaderPresenter.TradeCloseType.REJECT,
+            confirmButtonLoading = headerSessionUiState.isInterruptActionInFlight,
         )
     }
 
@@ -231,6 +234,7 @@ fun OpenTradeScreen(tradeId: String) {
         OpenMediationDialog(
             onCancelConfirm = headerPresenter::onOpenMediation,
             onDismiss = headerPresenter::onCloseMediationConfirmationDialog,
+            confirmButtonLoading = headerSessionUiState.isOpenMediationActionInFlight,
         )
     }
 
@@ -263,6 +267,7 @@ fun OpenTradeScreen(tradeId: String) {
         CloseTradeDialog(
             onDismiss = { buyerState4Presenter.onAction(State4UiAction.OnDismissCloseTrade) },
             onConfirm = { buyerState4Presenter.onAction(State4UiAction.OnConfirmCloseTrade) },
+            confirmButtonLoading = buyerState4Ui.isConfirmCloseTradeLoading,
         )
     }
 
@@ -270,6 +275,7 @@ fun OpenTradeScreen(tradeId: String) {
         CloseTradeDialog(
             onDismiss = { sellerState4Presenter.onAction(State4UiAction.OnDismissCloseTrade) },
             onConfirm = { sellerState4Presenter.onAction(State4UiAction.OnConfirmCloseTrade) },
+            confirmButtonLoading = sellerState4Ui.isConfirmCloseTradeLoading,
         )
     }
 
@@ -277,6 +283,7 @@ fun OpenTradeScreen(tradeId: String) {
         UndoIgnoreDialog(
             onConfirm = presenter::onConfirmedUndoIgnoreUser,
             onDismiss = presenter::hideUndoIgnoreDialog,
+            confirmButtonLoading = isUndoIgnoreInFlight,
         )
     }
 }

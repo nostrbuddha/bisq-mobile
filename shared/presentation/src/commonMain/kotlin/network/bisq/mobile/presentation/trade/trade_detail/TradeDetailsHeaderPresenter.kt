@@ -142,11 +142,14 @@ class TradeDetailsHeaderPresenter(
                         }
                     }
                 }
-            combine(actionsFlow, paymentDataFlow, formattedTradeDurationFlow, isInteractive) { actions, payment, formattedTradeDuration, interactive ->
-                _sessionUiState.update { prev ->
-                    prev.copy(
-                        showDetails = prev.showDetails,
-                        isInteractive = interactive,
+            combine(
+                actionsFlow,
+                paymentDataFlow,
+                formattedTradeDurationFlow,
+            ) { actions, payment, formattedTradeDuration ->
+                _sessionUiState.update { st ->
+                    st.copy(
+                        showDetails = st.showDetails,
                         interruptTradeButtonText = actions.interruptTradeButtonText,
                         openMediationButtonText = actions.openMediationButtonText,
                         isInMediation = actions.isInMediation,
@@ -154,6 +157,8 @@ class TradeDetailsHeaderPresenter(
                         paymentProof = payment.paymentProof,
                         receiverAddress = payment.receiverAddress,
                         formattedTradeDuration = formattedTradeDuration,
+                        isInterruptActionInFlight = st.isInterruptActionInFlight,
+                        isOpenMediationActionInFlight = st.isOpenMediationActionInFlight,
                     )
                 }
             }.collect { }
@@ -311,29 +316,33 @@ class TradeDetailsHeaderPresenter(
         if (selectedTrade.value == null) {
             return
         }
+        _sessionUiState.update { it.copy(isInterruptActionInFlight = true) }
+        showLoading()
         presenterScope.launch {
-            showLoading()
-            when (tradeCloseType.value) {
-                TradeCloseType.REJECT -> {
-                    tradesServiceFacade
-                        .rejectTrade()
-                        .onFailure { exception ->
-                            handleError(exception)
-                        }
-                }
+            try {
+                when (tradeCloseType.value) {
+                    TradeCloseType.REJECT -> {
+                        tradesServiceFacade
+                            .rejectTrade()
+                            .onFailure { exception ->
+                                handleError(exception)
+                            }
+                    }
 
-                TradeCloseType.CANCEL -> {
-                    tradesServiceFacade
-                        .cancelTrade()
-                        .onFailure { exception ->
-                            handleError(exception)
-                        }
-                }
+                    TradeCloseType.CANCEL -> {
+                        tradesServiceFacade
+                            .cancelTrade()
+                            .onFailure { exception ->
+                                handleError(exception)
+                            }
+                    }
 
-                else -> Unit
+                    else -> Unit
+                }
+            } finally {
+                hideLoading()
+                _sessionUiState.update { it.copy(isInterruptActionInFlight = false) }
             }
-            _showInterruptionConfirmationDialog.value = false
-            hideLoading()
         }
     }
 
@@ -352,24 +361,29 @@ class TradeDetailsHeaderPresenter(
             return
         }
         _showMediationConfirmationDialog.value = false
+        _sessionUiState.update { it.copy(isOpenMediationActionInFlight = true) }
+        showLoading()
         presenterScope.launch {
-            showLoading()
-            mediationServiceFacade
-                .reportToMediator(trade)
-                .onFailure { exception ->
-                    when (exception) {
-                        is MediatorNotAvailableException -> {
-                            _mediationError.value =
-                                "mobile.takeOffer.noMediatorAvailable.warning".i18n()
-                        }
+            try {
+                mediationServiceFacade
+                    .reportToMediator(trade)
+                    .onFailure { exception ->
+                        when (exception) {
+                            is MediatorNotAvailableException -> {
+                                _mediationError.value =
+                                    "mobile.takeOffer.noMediatorAvailable.warning".i18n()
+                            }
 
-                        else -> {
-                            _mediationError.value =
-                                "mobile.bisqEasy.tradeState.mediationFailed".i18n()
+                            else -> {
+                                _mediationError.value =
+                                    "mobile.bisqEasy.tradeState.mediationFailed".i18n()
+                            }
                         }
                     }
-                }
-            hideLoading()
+            } finally {
+                hideLoading()
+                _sessionUiState.update { it.copy(isOpenMediationActionInFlight = false) }
+            }
         }
     }
 
@@ -378,9 +392,9 @@ class TradeDetailsHeaderPresenter(
     }
 
     fun onToggleHeader() {
-        disableInteractive()
+        showLoading()
         _sessionUiState.update { it.copy(showDetails = !it.showDetails) }
-        enableInteractive()
+        hideLoading()
     }
 
     private fun reset() {

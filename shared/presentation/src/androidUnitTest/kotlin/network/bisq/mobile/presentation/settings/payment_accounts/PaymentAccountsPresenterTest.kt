@@ -4,6 +4,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -126,6 +127,7 @@ class PaymentAccountsPresenterTest {
             assertFalse(state.isLoadingAccountsError)
             assertFalse(state.showAddAccountState)
             assertFalse(state.showEditAccountState)
+            assertFalse(state.isProcessing)
         }
 
     @Test
@@ -477,6 +479,7 @@ class PaymentAccountsPresenterTest {
             presenter.onAction(PaymentAccountsUiAction.OnAccountNameChange("New Account"))
             presenter.onAction(PaymentAccountsUiAction.OnAccountDescriptionChange("account@example.com"))
             presenter.onAction(PaymentAccountsUiAction.OnConfirmAddAccountClick)
+            assertTrue(presenter.uiState.value.isProcessing)
             advanceUntilIdle()
 
             // Then
@@ -487,9 +490,12 @@ class PaymentAccountsPresenterTest {
             val payload = accountState.accounts[0].accountPayload as UserDefinedFiatAccountPayload
             assertEquals("account@example.com", payload.accountData)
             assertFalse(presenter.uiState.value.showAddAccountState) // Dialog should be closed
+            assertFalse(presenter.uiState.value.isProcessing)
 
             // Verify success snackbar was shown
             coVerify { globalUiManager.showSnackbar("mobile.user.paymentAccounts.createAccount.notifications.name.accountCreated".i18n(), type = SnackbarType.SUCCESS, any()) }
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -510,6 +516,7 @@ class PaymentAccountsPresenterTest {
             presenter.onAction(PaymentAccountsUiAction.OnAccountNameChange("New Account"))
             presenter.onAction(PaymentAccountsUiAction.OnAccountDescriptionChange("account@example.com"))
             presenter.onAction(PaymentAccountsUiAction.OnConfirmAddAccountClick)
+            assertTrue(presenter.uiState.value.isProcessing)
             advanceUntilIdle()
 
             // Then
@@ -520,6 +527,9 @@ class PaymentAccountsPresenterTest {
 
             // Verify error snackbar was shown
             coVerify { globalUiManager.showSnackbar("mobile.error.generic".i18n(), type = SnackbarType.ERROR, any()) }
+            assertFalse(presenter.uiState.value.isProcessing)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     // ========== Save Account Tests ==========
@@ -551,6 +561,7 @@ class PaymentAccountsPresenterTest {
             presenter.onAction(PaymentAccountsUiAction.OnAccountNameChange("Updated Account"))
             presenter.onAction(PaymentAccountsUiAction.OnAccountDescriptionChange("updated@example.com"))
             presenter.onAction(PaymentAccountsUiAction.OnSaveAccountClick)
+            assertTrue(presenter.uiState.value.isProcessing)
             advanceUntilIdle()
 
             // Then
@@ -559,6 +570,9 @@ class PaymentAccountsPresenterTest {
 
             // Verify success snackbar was shown
             coVerify { globalUiManager.showSnackbar("mobile.user.paymentAccounts.createAccount.notifications.name.accountUpdated".i18n(), type = SnackbarType.SUCCESS, any()) }
+            assertFalse(presenter.uiState.value.isProcessing)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -587,10 +601,14 @@ class PaymentAccountsPresenterTest {
             // When - keep the same name but change description
             presenter.onAction(PaymentAccountsUiAction.OnAccountDescriptionChange("updated@example.com"))
             presenter.onAction(PaymentAccountsUiAction.OnSaveAccountClick)
+            assertTrue(presenter.uiState.value.isProcessing)
             advanceUntilIdle()
 
             // Then - should succeed (same name is allowed when editing the current account)
             coVerify(atLeast = 1) { userDefinedAccountsServiceFacade.saveAccount(any()) }
+            assertFalse(presenter.uiState.value.isProcessing)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -689,6 +707,7 @@ class PaymentAccountsPresenterTest {
             // When
             presenter.onAction(PaymentAccountsUiAction.OnAccountNameChange("Updated Name"))
             presenter.onAction(PaymentAccountsUiAction.OnSaveAccountClick)
+            assertTrue(presenter.uiState.value.isProcessing)
             advanceUntilIdle()
 
             // Then
@@ -697,6 +716,9 @@ class PaymentAccountsPresenterTest {
 
             // Verify error snackbar was shown
             coVerify { globalUiManager.showSnackbar("mobile.error.generic".i18n(), type = SnackbarType.ERROR, any()) }
+            assertFalse(presenter.uiState.value.isProcessing)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     // ========== Delete Account Tests ==========
@@ -725,6 +747,7 @@ class PaymentAccountsPresenterTest {
             presenter.onAction(PaymentAccountsUiAction.OnDeleteAccountClick)
             advanceUntilIdle()
             presenter.onAction(PaymentAccountsUiAction.OnConfirmDeleteAccountClick)
+            assertTrue(presenter.uiState.value.isProcessing)
             advanceUntilIdle()
 
             // Then
@@ -734,6 +757,9 @@ class PaymentAccountsPresenterTest {
 
             // Verify success snackbar was shown
             coVerify { globalUiManager.showSnackbar("mobile.user.paymentAccounts.createAccount.notifications.name.accountDeleted".i18n(), type = SnackbarType.SUCCESS, any()) }
+            assertFalse(presenter.uiState.value.isProcessing)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -761,11 +787,15 @@ class PaymentAccountsPresenterTest {
 
             // When
             presenter.onAction(PaymentAccountsUiAction.OnConfirmDeleteAccountClick)
+            assertTrue(presenter.uiState.value.isProcessing)
             advanceUntilIdle()
 
             // Then
             // Verify error snackbar was shown with account-specific error message
             coVerify { globalUiManager.showSnackbar("mobile.user.paymentAccounts.createAccount.notifications.name.unableToDelete".i18n(sampleAccount1.accountName), type = SnackbarType.ERROR, any()) }
+            assertFalse(presenter.uiState.value.isProcessing)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     // ========== UI Action Tests ==========

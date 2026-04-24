@@ -56,6 +56,7 @@ fun MultiScreenWizardScaffold(
     nextOnClick: (() -> Unit)? = null,
     prevDisabled: Boolean = false,
     nextDisabled: Boolean = false,
+    nextIsLoading: Boolean = false,
     showNextPrevButtons: Boolean = true,
     horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
     useStaticScaffold: Boolean = false,
@@ -214,6 +215,7 @@ fun MultiScreenWizardScaffold(
                                     vertical = BisqUIConstants.ScreenPaddingHalf,
                                 ),
                             disabled = nextOnClick == null || nextDisabled || controlsLocked,
+                            isLoading = nextIsLoading,
                             modifier = Modifier.weight(1.0F).fillMaxHeight(),
                         )
                     }

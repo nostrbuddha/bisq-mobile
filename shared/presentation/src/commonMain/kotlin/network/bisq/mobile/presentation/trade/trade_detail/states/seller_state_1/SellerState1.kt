@@ -28,6 +28,7 @@ fun SellerState1(
     val paymentAccountDataEntry by presenter.paymentAccountDataEntry.collectAsState()
     val paymentAccountName by presenter.paymentAccountName.collectAsState()
     val accounts by presenter.accounts.collectAsState()
+    val isSendPaymentDataLoading by presenter.isSendPaymentDataLoading.collectAsState()
 
     val selectedIndex = accounts.indexOfFirst { it.accountName == paymentAccountName }
 
@@ -35,6 +36,7 @@ fun SellerState1(
         paymentAccountDataEntry = paymentAccountDataEntry,
         accounts = accounts,
         selectedIndex = selectedIndex,
+        isSendPaymentDataLoading = isSendPaymentDataLoading,
         onPaymentDataInput = { value -> presenter.onPaymentDataInput(value) },
         onAccountSelect = { index ->
             if (index in accounts.indices) {
@@ -52,6 +54,7 @@ fun SellerState1Content(
     paymentAccountDataEntry: DataEntry,
     accounts: List<UserDefinedFiatAccount>,
     selectedIndex: Int,
+    isSendPaymentDataLoading: Boolean,
     onPaymentDataInput: (String) -> Unit,
     onAccountSelect: (Int) -> Unit,
     onSendPaymentData: () -> Unit,
@@ -88,6 +91,7 @@ fun SellerState1Content(
             text = "bisqEasy.tradeState.info.seller.phase1.buttonText".i18n(), // Send account data
             onClick = onSendPaymentData,
             disabled = paymentAccountDataEntry.errorMessage != null || paymentAccountDataEntry.value.isEmpty(),
+            isLoading = isSendPaymentDataLoading,
         )
     }
 }
@@ -129,6 +133,7 @@ private fun SellerState1_WithAccountsAndDataPreview() {
             paymentAccountDataEntry = DataEntry(value = "user@example.com"),
             accounts = sampleAccounts,
             selectedIndex = 0,
+            isSendPaymentDataLoading = false,
             onPaymentDataInput = previewOnPaymentDataInput,
             onAccountSelect = previewOnAccountSelect,
             onSendPaymentData = previewOnSendPaymentData,
@@ -162,6 +167,7 @@ private fun SellerState1_WithAccountsEmptyDataPreview() {
             paymentAccountDataEntry = DataEntry(),
             accounts = sampleAccounts,
             selectedIndex = 0,
+            isSendPaymentDataLoading = false,
             onPaymentDataInput = previewOnPaymentDataInput,
             onAccountSelect = previewOnAccountSelect,
             onSendPaymentData = previewOnSendPaymentData,
@@ -177,6 +183,7 @@ private fun SellerState1_NoAccountsPreview() {
             paymentAccountDataEntry = DataEntry(),
             accounts = emptyList(),
             selectedIndex = -1,
+            isSendPaymentDataLoading = false,
             onPaymentDataInput = previewOnPaymentDataInput,
             onAccountSelect = previewOnAccountSelect,
             onSendPaymentData = previewOnSendPaymentData,
