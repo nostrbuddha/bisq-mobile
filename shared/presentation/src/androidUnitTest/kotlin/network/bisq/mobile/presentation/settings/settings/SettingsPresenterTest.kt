@@ -573,12 +573,16 @@ class SettingsPresenterTest {
 
             // When
             presenter.onAction(SettingsUiAction.OnNumDaysAfterRedactingTradeDataSave)
+            assertTrue(presenter.uiState.value.isSavingNumDaysAfterRedactingTradeData)
             advanceUntilIdle()
 
             // Then
             coVerify { settingsServiceFacade.setNumDaysAfterRedactingTradeData(120) }
             val state = presenter.uiState.value
             assertFalse(state.hasChangesNumDaysAfterRedactingTradeData)
+            assertFalse(state.isSavingNumDaysAfterRedactingTradeData)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -683,12 +687,16 @@ class SettingsPresenterTest {
 
             // When
             presenter.onAction(SettingsUiAction.OnPowFactorSave)
+            assertTrue(presenter.uiState.value.isSavingPowFactor)
             advanceUntilIdle()
 
             // Then
             coVerify { settingsServiceFacade.setDifficultyAdjustmentFactor(5.0) }
             val state = presenter.uiState.value
             assertFalse(state.hasChangesPowFactor)
+            assertFalse(state.isSavingPowFactor)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -773,6 +781,7 @@ class SettingsPresenterTest {
 
             // When
             presenter.onAction(SettingsUiAction.OnResetAllDontShowAgainClick)
+            assertTrue(presenter.uiState.value.isResettingDontShowAgainFlags)
             advanceUntilIdle()
 
             // Then
@@ -803,6 +812,7 @@ class SettingsPresenterTest {
 
             // When
             presenter.onAction(SettingsUiAction.OnResetAllDontShowAgainClick)
+            assertTrue(presenter.uiState.value.isResettingDontShowAgainFlags)
             advanceUntilIdle()
 
             // Then

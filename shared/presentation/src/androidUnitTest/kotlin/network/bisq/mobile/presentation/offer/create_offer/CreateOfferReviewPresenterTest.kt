@@ -1,8 +1,10 @@
 package network.bisq.mobile.presentation.offer.create_offer
 
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -10,7 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import network.bisq.mobile.data.model.BatteryOptimizationState
 import network.bisq.mobile.data.model.PermissionState
@@ -75,9 +79,12 @@ import kotlin.test.assertTrue
 class CreateOfferReviewPresenterTest {
     private val testDispatcher = StandardTestDispatcher()
 
+    private lateinit var testGlobalUiManager: GlobalUiManager
+
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        testGlobalUiManager = mockk(relaxed = true)
         startKoin {
             modules(
                 module {
@@ -88,7 +95,7 @@ class CreateOfferReviewPresenterTest {
                         }
                     }
                     single<NavigationManager> { mockk(relaxed = true) }
-                    single { GlobalUiManager() }
+                    single<GlobalUiManager> { testGlobalUiManager }
                 },
             )
         }
@@ -881,4 +888,49 @@ class CreateOfferReviewPresenterTest {
             ApplicationBootstrapFacade.isDemo = previousDemoState
         }
     }
+
+    @Test
+    fun `onCreateOffer shows then hides global loading when createOffer succeeds`() =
+        runTest(testDispatcher) {
+            val marketUSD = MarketVOFactory.USD
+            val staleMarketPrice = with(PriceQuoteVOFactory) { fromPrice(100000.0, marketUSD) }
+            val currentMarketItem = makeMarketPriceItem(marketUSD, 105000.0)
+            val prices = mutableMapOf(marketUSD to currentMarketItem)
+            val settingsRepo = FakeSettingsRepository()
+            val marketPriceServiceFacade = FakeMarketPriceServiceFacade(settingsRepo, prices)
+
+            mockkStatic(
+                "network.bisq.mobile.presentation.common.ui.platform.PlatformPresentationAbstractions_androidKt",
+            )
+            every { getScreenWidthDp() } returns 480
+
+            val offers = mockk<OffersServiceFacade>(relaxed = true)
+            coEvery { offers.createOffer(any(), any(), any(), any(), any(), any(), any()) } returns
+                Result.success("new-offer")
+
+            val createOfferCoordinator =
+                CreateOfferCoordinator(
+                    marketPriceServiceFacade,
+                    offers,
+                    FakeSettingsServiceFacade(),
+                )
+            createOfferCoordinator.createOfferModel =
+                buildModelWithPercentagePricing(marketUSD, staleMarketPrice, 0.10)
+
+            val mainPresenter = makeMainPresenter()
+            val reviewPresenter = CreateOfferReviewPresenter(mainPresenter, createOfferCoordinator)
+            reviewPresenter.onViewAttached()
+
+            val previousDemoState = ApplicationBootstrapFacade.isDemo
+            try {
+                ApplicationBootstrapFacade.isDemo = false
+                reviewPresenter.onCreateOffer()
+                advanceUntilIdle()
+            } finally {
+                ApplicationBootstrapFacade.isDemo = previousDemoState
+            }
+
+            verify(exactly = 1) { testGlobalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { testGlobalUiManager.hideLoading() }
+        }
 }

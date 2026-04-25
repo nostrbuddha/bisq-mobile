@@ -7,9 +7,9 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -21,6 +21,7 @@ import network.bisq.mobile.domain.utils.CoroutineExceptionHandlerSetup
 import network.bisq.mobile.domain.utils.CoroutineJobsManager
 import network.bisq.mobile.domain.utils.DefaultCoroutineJobsManager
 import network.bisq.mobile.i18n.I18nSupport
+import network.bisq.mobile.i18n.i18n
 import network.bisq.mobile.presentation.common.ui.base.GlobalUiManager
 import network.bisq.mobile.presentation.common.ui.error.GenericErrorHandler
 import network.bisq.mobile.presentation.common.ui.navigation.manager.NavigationManager
@@ -37,19 +38,15 @@ import kotlin.test.assertFalse
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class InterruptedTradePresenterTest {
-    private val testDispatcher = UnconfinedTestDispatcher()
+    private val testDispatcher = StandardTestDispatcher()
 
-    // Mocks
     private val mainPresenter: MainPresenter = mockk(relaxed = true)
     private val tradesServiceFacade: TradesServiceFacade = mockk(relaxed = true)
     private val mediationServiceFacade: MediationServiceFacade = mockk(relaxed = true)
     private val tradeReadStateRepository: TradeReadStateRepository = mockk(relaxed = true)
     private val navigationManager: NavigationManager = mockk(relaxed = true)
+    private lateinit var globalUiManager: GlobalUiManager
 
-    // Use lazy initialization to inject test dispatcher into GlobalUiManager
-    private val globalUiManager by lazy { GlobalUiManager(testDispatcher) }
-
-    // Koin module for BasePresenter dependencies
     private val testKoinModule =
         module {
             single { CoroutineExceptionHandlerSetup() }
@@ -65,6 +62,7 @@ class InterruptedTradePresenterTest {
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        globalUiManager = mockk(relaxed = true)
         startKoin { modules(testKoinModule) }
         I18nSupport.initialize("en")
         GenericErrorHandler.clearGenericError()
@@ -79,8 +77,7 @@ class InterruptedTradePresenterTest {
 
     @Test
     fun onCloseTrade_success_clearsReadState_navigatesBack_and_hidesLoading() =
-        runTest {
-            // Given
+        runTest(testDispatcher) {
             val tradeItem = mockk<TradeItemPresentationModel>(relaxed = true)
             every { tradeItem.tradeId } returns "t-1"
             val selectedFlow = MutableStateFlow<TradeItemPresentationModel?>(tradeItem)
@@ -95,24 +92,21 @@ class InterruptedTradePresenterTest {
                     tradeReadStateRepository,
                 )
 
-            // When
             presenter.onCloseTrade()
+            advanceUntilIdle()
 
-            // Then: verify closeTrade invoked
-            coVerify(timeout = 500) { tradesServiceFacade.closeTrade() }
-            // Then: clears read state
-            coVerify(timeout = 500) { tradeReadStateRepository.clearId("t-1") }
-            // Then: navigates back
-            verify(timeout = 500) { navigationManager.navigateBack(any()) }
-            // And loading hidden
-            waitUntil(timeoutMs = 1000) { globalUiManager.showLoadingDialog.value == false }
-            assertFalse(globalUiManager.showLoadingDialog.value)
+            coVerify(timeout = 5000) { tradesServiceFacade.closeTrade() }
+            coVerify(timeout = 5000) { tradeReadStateRepository.clearId("t-1") }
+            advanceUntilIdle()
+            verify { navigationManager.navigateBack(any()) }
+            assertFalse(presenter.isProcessing.value)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
     fun onCloseTrade_failure_showsError_doesNotNavigate_and_hidesLoading() =
-        runTest {
-            // Given
+        runTest(testDispatcher) {
             val tradeItem = mockk<TradeItemPresentationModel>(relaxed = true)
             every { tradeItem.tradeId } returns "t-2"
             val selectedFlow = MutableStateFlow<TradeItemPresentationModel?>(tradeItem)
@@ -127,30 +121,24 @@ class InterruptedTradePresenterTest {
                     tradeReadStateRepository,
                 )
 
-            // When
             presenter.onCloseTrade()
+            advanceUntilIdle()
 
-            // Then: verify closeTrade invoked
-            coVerify(timeout = 500) { tradesServiceFacade.closeTrade() }
-            // Should NOT clear read state
-            coVerify(timeout = 300, exactly = 0) { tradeReadStateRepository.clearId(any()) }
-            // Should NOT navigate back
-            verify(timeout = 300, exactly = 0) { navigationManager.navigateBack(any()) }
-            // Loading hidden
-            waitUntil(timeoutMs = 1000) { globalUiManager.showLoadingDialog.value == false }
-            assertFalse(globalUiManager.showLoadingDialog.value)
-            // Error shown
-            waitUntil(timeoutMs = 500) { GenericErrorHandler.genericErrorMessage.value != null }
+            coVerify { tradesServiceFacade.closeTrade() }
+            coVerify(exactly = 0) { tradeReadStateRepository.clearId(any()) }
+            verify(exactly = 0) { navigationManager.navigateBack(any()) }
+            assertFalse(presenter.isProcessing.value)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
             assertEquals(
-                "Failed to close trade: boom",
+                "mobile.bisqEasy.openTrades.closeTrade.failed".i18n("boom"),
                 GenericErrorHandler.genericErrorMessage.value,
             )
         }
 
     @Test
     fun onCloseTrade_success_but_clearReadState_throws_showsError_and_still_navigates() =
-        runTest {
-            // Given
+        runTest(testDispatcher) {
             val tradeItem = mockk<TradeItemPresentationModel>(relaxed = true)
             every { tradeItem.tradeId } returns "t-3"
             val selectedFlow = MutableStateFlow<TradeItemPresentationModel?>(tradeItem)
@@ -166,27 +154,18 @@ class InterruptedTradePresenterTest {
                     tradeReadStateRepository,
                 )
 
-            // When
             presenter.onCloseTrade()
+            advanceUntilIdle()
 
-            // Then: navigates back despite clearId failure
-            verify(timeout = 500) { navigationManager.navigateBack(any()) }
-            // Error was shown for clearReadState failure
-            waitUntil(timeoutMs = 500) { GenericErrorHandler.genericErrorMessage.value?.contains("Failed to update read state") == true }
-            // Loading hidden
-            waitUntil(timeoutMs = 1000) { globalUiManager.showLoadingDialog.value == false }
-            assertFalse(globalUiManager.showLoadingDialog.value)
+            coVerify(timeout = 5000) { tradeReadStateRepository.clearId("t-3") }
+            advanceUntilIdle()
+            verify { navigationManager.navigateBack(any()) }
+            assertFalse(presenter.isProcessing.value)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
+            assertEquals(
+                "mobile.bisqEasy.openTrades.clearReadState.failed".i18n("fail-clear"),
+                GenericErrorHandler.genericErrorMessage.value,
+            )
         }
-
-    // Helper: simple polling wait
-    private suspend fun waitUntil(
-        timeoutMs: Long,
-        condition: () -> Boolean,
-    ) {
-        val start = System.currentTimeMillis()
-        while (!condition()) {
-            if (System.currentTimeMillis() - start > timeoutMs) break
-            delay(10)
-        }
-    }
 }

@@ -70,15 +70,15 @@ abstract class State4Presenter(
     }
 
     private fun onConfirmCloseTrade() {
+        val tradeId =
+            _uiState.value.trade?.tradeId ?: run {
+                _uiState.update { it.copy(showCloseTradeDialog = false) }
+                GenericErrorHandler.handleGenericError("No trade selected for closure")
+                return
+            }
+        _uiState.update { it.copy(isConfirmCloseTradeLoading = true) }
+        showLoading()
         presenterScope.launch {
-            val tradeId =
-                _uiState.value.trade?.tradeId ?: run {
-                    _uiState.update { it.copy(showCloseTradeDialog = false) }
-                    GenericErrorHandler.handleGenericError("No trade selected for closure")
-                    return@launch
-                }
-            _uiState.update { it.copy(isConfirmCloseTradeLoading = true) }
-            showLoading()
             try {
                 val result = tradesServiceFacade.closeTrade()
                 when {

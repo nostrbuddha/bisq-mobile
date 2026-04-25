@@ -47,6 +47,9 @@ abstract class BaseTradeStateMainChain3bPresenter(
         MutableStateFlow(null)
     val amountNotMatchingDialogText: StateFlow<String?> = _amountNotMatchingDialogText.asStateFlow()
 
+    private val _isCompleteTradeLoading: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val isCompleteTradeLoading: StateFlow<Boolean> = _isCompleteTradeLoading.asStateFlow()
+
     private var txAmount: Long? = null
     private var txAmountFormatted: String? = null
     private val openTradeItemModel = tradesServiceFacade.selectedTrade.value
@@ -82,6 +85,7 @@ abstract class BaseTradeStateMainChain3bPresenter(
         _blockExplorer.value = EMPTY_STRING
         _balanceFromTx.value = EMPTY_STRING
         _errorMessage.value = null
+        _isCompleteTradeLoading.value = false
         super.onViewUnattaching()
     }
 
@@ -122,12 +126,18 @@ abstract class BaseTradeStateMainChain3bPresenter(
     }
 
     private fun completeTrade() {
+        _isCompleteTradeLoading.value = true
+        showLoading()
         presenterScope.launch {
-            showLoading()
             try {
-                tradesServiceFacade.btcConfirmed()
+                tradesServiceFacade
+                    .btcConfirmed()
+                    .onFailure { handleError(it) }
+            } catch (e: Exception) {
+                handleError(e)
             } finally {
                 hideLoading()
+                _isCompleteTradeLoading.value = false
             }
         }
     }

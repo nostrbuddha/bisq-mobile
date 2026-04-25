@@ -2,6 +2,7 @@ package network.bisq.mobile.presentation.common.test_utils
 
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
+import io.mockk.mockk
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -11,9 +12,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import network.bisq.mobile.domain.utils.CoroutineJobsManager
+import network.bisq.mobile.domain.utils.DefaultCoroutineJobsManager
+import network.bisq.mobile.presentation.common.ui.base.GlobalUiManager
 import network.bisq.mobile.presentation.common.ui.navigation.NavRoute
 import network.bisq.mobile.presentation.common.ui.navigation.TabNavRoute
 import network.bisq.mobile.presentation.common.ui.navigation.manager.NavigationManager
+import org.koin.core.context.startKoin
+import org.koin.dsl.module
 
 class TestCoroutineJobsManager(
     dispatcher: CoroutineDispatcher,
@@ -75,5 +80,21 @@ class NoopNavigationManager : NavigationManager {
 
     override fun navigateBack(onCompleted: (() -> Unit)?) {
         onCompleted?.invoke()
+    }
+}
+
+/**
+ * Starts Koin with a [GlobalUiManager] (typically a mock) plus `BasePresenter` dependencies
+ * for presenter unit tests.
+ */
+fun startKoinForPresenterUnitTests(globalUiManager: GlobalUiManager) {
+    startKoin {
+        modules(
+            module {
+                single<NavigationManager> { mockk(relaxed = true) }
+                single<CoroutineJobsManager> { DefaultCoroutineJobsManager() }
+                single<GlobalUiManager> { globalUiManager }
+            },
+        )
     }
 }

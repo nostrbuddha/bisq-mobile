@@ -207,9 +207,14 @@ class State4PresenterTest {
 
             presenter.onAction(State4UiAction.OnExportTradeClick)
 
+            assertTrue(presenter.uiState.value.isExportTradeLoading)
+            waitUntil(timeoutMs = 2000) { !presenter.uiState.value.isExportTradeLoading }
             coVerify(timeout = 500) {
                 shareFileService.shareUtf8TextFile(any(), "BisqEasy-trade-short99.csv")
             }
+            assertFalse(presenter.uiState.value.isExportTradeLoading)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -222,6 +227,9 @@ class State4PresenterTest {
             presenter.onAction(State4UiAction.OnExportTradeClick)
 
             coVerify(timeout = 300, exactly = 0) { shareFileService.shareUtf8TextFile(any(), any()) }
+            assertFalse(presenter.uiState.value.isExportTradeLoading)
+            verify(exactly = 0) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 0) { globalUiManager.hideLoading() }
             waitUntil(timeoutMs = 500) { GenericErrorHandler.genericErrorMessage.value != null }
             assertEquals("No trade selected for export", GenericErrorHandler.genericErrorMessage.value)
         }
@@ -238,7 +246,12 @@ class State4PresenterTest {
 
             presenter.onAction(State4UiAction.OnExportTradeClick)
 
+            assertTrue(presenter.uiState.value.isExportTradeLoading)
             coVerify(timeout = 5000) { shareFileService.shareUtf8TextFile(any(), any()) }
+            waitUntil(timeoutMs = 2000) { !presenter.uiState.value.isExportTradeLoading }
+            assertFalse(presenter.uiState.value.isExportTradeLoading)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
             waitUntil(timeoutMs = 500) { GenericErrorHandler.genericErrorMessage.value != null }
             assertEquals("share denied", GenericErrorHandler.genericErrorMessage.value)
         }

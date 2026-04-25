@@ -1,9 +1,11 @@
 package network.bisq.mobile.presentation.trade.trade_detail
 
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,7 +56,7 @@ class TradeDetailsHeaderPresenterTest {
     private lateinit var userProfileServiceFacade: UserProfileServiceFacade
     private lateinit var mainPresenter: MainPresenter
     private val navigationManager: NavigationManager = mockk(relaxed = true)
-    private val globalUiManager by lazy { GlobalUiManager(testDispatcher) }
+    private lateinit var globalUiManager: GlobalUiManager
 
     private val testKoinModule =
         module {
@@ -79,8 +81,10 @@ class TradeDetailsHeaderPresenterTest {
         mediationServiceFacade = mockk(relaxed = true)
         userProfileServiceFacade = mockk(relaxed = true)
         mainPresenter = mockk(relaxed = true)
+        globalUiManager = mockk(relaxed = true)
 
         startKoin { modules(testKoinModule) }
+        clearMocks(globalUiManager, answers = false, recordedCalls = true, childMocks = true)
         GenericErrorHandler.clearGenericError()
         I18nSupport.initialize("en")
 
@@ -167,8 +171,6 @@ class TradeDetailsHeaderPresenterTest {
             presenter.onViewAttached()
             advanceUntilIdle()
 
-            assertTrue(presenter.sessionUiState.value.isInteractive)
-
             assertFalse(presenter.sessionUiState.value.showDetails)
             presenter.onAction(TradeDetailsHeaderUiAction.ToggleHeader)
             // Flush disableInteractive + combine; do not advance time — advanceUntilIdle can complete
@@ -176,12 +178,12 @@ class TradeDetailsHeaderPresenterTest {
             runCurrent()
 
             assertTrue(presenter.sessionUiState.value.showDetails)
-            assertFalse(presenter.sessionUiState.value.isInteractive)
 
             advanceTimeBy(BasePresenter.SMALLEST_PERCEPTIVE_DELAY)
             runCurrent()
 
-            assertTrue(presenter.sessionUiState.value.isInteractive)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -215,9 +217,13 @@ class TradeDetailsHeaderPresenterTest {
             advanceUntilIdle()
 
             presenter.onInterruptTrade()
+            assertTrue(presenter.sessionUiState.value.isInterruptActionInFlight)
             advanceUntilIdle()
 
             coVerify { tradesServiceFacade.rejectTrade() }
+            assertFalse(presenter.sessionUiState.value.isInterruptActionInFlight)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -235,9 +241,13 @@ class TradeDetailsHeaderPresenterTest {
             advanceUntilIdle()
 
             presenter.onInterruptTrade()
+            assertTrue(presenter.sessionUiState.value.isInterruptActionInFlight)
             advanceUntilIdle()
 
             coVerify { tradesServiceFacade.cancelTrade() }
+            assertFalse(presenter.sessionUiState.value.isInterruptActionInFlight)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -253,12 +263,16 @@ class TradeDetailsHeaderPresenterTest {
             advanceUntilIdle()
 
             presenter.onOpenMediation()
+            assertTrue(presenter.sessionUiState.value.isOpenMediationActionInFlight)
             advanceUntilIdle()
 
             assertEquals(
                 "mobile.takeOffer.noMediatorAvailable.warning".i18n(),
                 presenter.mediationError.value,
             )
+            assertFalse(presenter.sessionUiState.value.isOpenMediationActionInFlight)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -274,12 +288,16 @@ class TradeDetailsHeaderPresenterTest {
             advanceUntilIdle()
 
             presenter.onOpenMediation()
+            assertTrue(presenter.sessionUiState.value.isOpenMediationActionInFlight)
             advanceUntilIdle()
 
             assertEquals(
                 "mobile.bisqEasy.tradeState.mediationFailed".i18n(),
                 presenter.mediationError.value,
             )
+            assertFalse(presenter.sessionUiState.value.isOpenMediationActionInFlight)
+            verify(exactly = 1) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 1) { globalUiManager.hideLoading() }
         }
 
     @Test
@@ -296,6 +314,8 @@ class TradeDetailsHeaderPresenterTest {
                 "mobile.bisqEasy.tradeState.mediationFailed".i18n(),
                 presenter.mediationError.value,
             )
+            verify(exactly = 0) { globalUiManager.scheduleShowLoading() }
+            verify(exactly = 0) { globalUiManager.hideLoading() }
         }
 
     @Test
