@@ -1,35 +1,84 @@
 package network.bisq.mobile.client.common.domain.service.push_notification
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
+import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.tasks.await
+import network.bisq.mobile.data.utils.AndroidAppContext
 import network.bisq.mobile.domain.utils.Logging
 
 /**
- * Android implementation of PushNotificationTokenProvider.
- * Uses Firebase Cloud Messaging (FCM) to get a device token.
+ * Android FCM implementation of [PushNotificationTokenProvider].
  *
- * TODO: Implement FCM integration when Android push notifications are needed.
- * For now, this is a stub that returns an error.
+ * Privacy posture: Firebase auto-init is OFF by default
+ * (see `AndroidManifest.xml` meta-data). This provider flips
+ * `isAutoInitEnabled = true` only when the user explicitly registers, and
+ * back to `false` on unregister. As a result, devices that never opt in to
+ * push notifications never establish a connection to Google's servers, even
+ * though the FCM library is bundled in the APK.
+ *
+ * Permission flow: [requestPermission] only reports whether the runtime
+ * `POST_NOTIFICATIONS` permission has been granted (Android 13+). Triggering
+ * the system permission prompt requires an Activity context — that part is
+ * handled by the UI layer (Settings screen toggle) before this is called.
  */
 class AndroidPushNotificationTokenProvider :
     PushNotificationTokenProvider,
     Logging {
     override suspend fun requestPermission(): Boolean {
-        // Android 13+ requires POST_NOTIFICATIONS permission
-        // For now, return false as FCM integration and permission handling are not implemented yet
-        log.w { "Android push notification permission check not implemented - FCM integration required" }
-        return false
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            // Pre-Android 13: notifications don't require runtime permission.
+            return true
+        }
+        val granted =
+            ContextCompat.checkSelfPermission(
+                AndroidAppContext.context,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            log.w {
+                "POST_NOTIFICATIONS permission not granted. The Settings UI " +
+                    "must request it from an Activity before registering."
+            }
+        }
+        return granted
     }
 
-    override suspend fun requestDeviceToken(): Result<String> {
-        // TODO: Implement FCM token retrieval
-        // FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-        //     if (task.isSuccessful) {
-        //         val token = task.result
-        //         // Use token
-        //     }
-        // }
-        log.w { "Android push notification token provider not yet implemented" }
-        return Result.failure(
-            PushNotificationException("Android push notifications not yet implemented. FCM integration required."),
-        )
-    }
+    override suspend fun requestDeviceToken(): Result<String> =
+        runCatching {
+            // User has opted in — turn Firebase on. Until this line runs,
+            // no FCM connection to Google's servers is established.
+            FirebaseMessaging.getInstance().isAutoInitEnabled = true
+
+            val token = FirebaseMessaging.getInstance().token.await()
+            check(token.isNotBlank()) { "FCM returned a blank token" }
+            // Privacy: never log token contents (not even a prefix).
+            log.i { "Fetched FCM token (${token.length} chars)" }
+            token
+        }.recoverCatching { throwable ->
+            log.e(throwable) { "Failed to fetch FCM token" }
+            // Roll back auto-init on failure so we don't leave a half-on state.
+            runCatching { FirebaseMessaging.getInstance().isAutoInitEnabled = false }
+            throw PushNotificationException(
+                "Failed to fetch FCM token. Verify google-services.json is configured.",
+                throwable,
+            )
+        }
+
+    override suspend fun revokeDeviceToken(): Result<Unit> =
+        runCatching {
+            log.i { "Revoking FCM token and disabling Firebase auto-init" }
+            try {
+                // deleteToken() unregisters the device on Google's side.
+                // If this throws, the failure propagates up to the outer
+                // runCatching so the caller can observe it.
+                FirebaseMessaging.getInstance().deleteToken().await()
+            } finally {
+                // Always disable auto-init — even on deleteToken() failure
+                // we want to stop talking to Google's servers locally.
+                FirebaseMessaging.getInstance().isAutoInitEnabled = false
+            }
+        }
 }

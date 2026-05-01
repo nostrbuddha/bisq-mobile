@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import network.bisq.mobile.data.replicated.chat.ChatMessageTypeEnum
@@ -65,6 +66,19 @@ class OpenTradesNotificationService(
     @Volatile
     private var isServiceStarted = false
 
+    /**
+     * When true, the local Android foreground service is suppressed. Reasons:
+     *  - The user opted in to relayed (FCM/APNs) notifications, so the trusted
+     *    node delivers via the relay and the local path would compete.
+     *  - The OS-level `POST_NOTIFICATIONS` permission is denied, so even if
+     *    the local service ran, its `notify(...)` calls would be dropped.
+     *
+     * Toggled by [setLocalDeliverySuppressed] from the app's lifecycle
+     * orchestrator after it has read the relevant flags.
+     */
+    @Volatile
+    private var isLocalDeliverySuppressed = false
+
     companion object {
         private const val FOREGROUND_DEBOUNCE_MS = 1000L
     }
@@ -76,14 +90,57 @@ class OpenTradesNotificationService(
     /**
      * Starts the foreground service immediately. Should be called during app initialization
      * before any heavy work to avoid ForegroundServiceDidNotStartInTimeException.
+     *
+     * No-op when local delivery is suppressed (relayed notifications enabled, or OS
+     * notification permission denied). Keeping the service alive in those cases would
+     * either compete with the relayed path or run with no user-visible effect.
      */
     fun startService() {
+        if (isLocalDeliverySuppressed) {
+            log.d { "Local delivery is suppressed — skipping local foreground service start" }
+            return
+        }
         if (!isServiceStarted) {
             log.i { "Starting foreground service on app initialization" }
             foregroundServiceController.startService()
             isServiceStarted = true
         } else {
             log.d { "Foreground service already started" }
+        }
+    }
+
+    /**
+     * Suppresses or resumes the local foreground delivery path. Drives mutual
+     * exclusivity between local and relayed (FCM/APNs) modes, and is also
+     * called when the OS-level notification permission flips so that we don't
+     * keep the FG service running with no permission to post notifications.
+     *
+     *  - `true`  → stops the local foreground service and prevents the
+     *              lifecycle observer from re-arming background flow
+     *              observers. Used when the relayed path handles delivery, or
+     *              when the OS has revoked / not granted POST_NOTIFICATIONS.
+     *  - `false` → starts the local foreground service. Used when the user
+     *              has the default (local) mode AND has granted notification
+     *              permission.
+     *
+     * Idempotent — repeated calls with the same value are a no-op.
+     */
+    fun setLocalDeliverySuppressed(suppressed: Boolean) {
+        if (isLocalDeliverySuppressed == suppressed) return
+        isLocalDeliverySuppressed = suppressed
+        if (suppressed) {
+            log.i { "Suppressing local foreground delivery — stopping foreground service" }
+            scope.launch { unregisterObservers() }
+            foregroundServiceController.stopService()
+            isServiceStarted = false
+        } else {
+            log.i { "Resuming local foreground delivery — starting foreground service" }
+            if (!isServiceStarted) {
+                foregroundServiceController.startService()
+                isServiceStarted = true
+            }
+            // The lifecycle observer will (re-)register flow observers next time
+            // the app moves to background — no need to register them here.
         }
     }
 
@@ -103,6 +160,13 @@ class OpenTradesNotificationService(
                         log.d { "App entered foreground (debounced). Unregistering observers." }
                         notificationController.clearPreRenderedNotifications()
                         unregisterObservers()
+                    } else if (isLocalDeliverySuppressed) {
+                        // Local delivery is suppressed (relayed mode is on, or
+                        // notification permission isn't granted): skip arming
+                        // the flow observers — they'd either double-notify with
+                        // FCM/APNs or post notifications the OS would silently
+                        // drop.
+                        log.d { "App entered background; local delivery suppressed — skipping observer registration." }
                     } else {
                         log.d { "App entered background (debounced). Registering observers." }
                         registerObservers()

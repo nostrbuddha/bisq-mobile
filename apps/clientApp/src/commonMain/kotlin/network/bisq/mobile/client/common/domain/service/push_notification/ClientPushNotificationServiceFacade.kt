@@ -1,10 +1,12 @@
 package network.bisq.mobile.client.common.domain.service.push_notification
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import network.bisq.mobile.client.common.domain.sensitive_settings.SensitiveSettingsRepository
 import network.bisq.mobile.data.crypto.getOrCreatePushNotificationKeyBase64
 import network.bisq.mobile.data.service.ServiceFacade
@@ -14,7 +16,6 @@ import network.bisq.mobile.data.utils.getPlatformInfo
 import network.bisq.mobile.domain.model.PlatformType
 import network.bisq.mobile.domain.repository.SettingsRepository
 import network.bisq.mobile.domain.utils.Logging
-import network.bisq.mobile.presentation.common.ui.utils.ExcludeFromCoverage
 
 /**
  * Client implementation of PushNotificationServiceFacade.
@@ -119,7 +120,8 @@ class ClientPushNotificationServiceFacade(
         }
 
         _deviceToken.value = token
-        log.i { "Got device token: ${token.take(10)}..." }
+        // Privacy: never log token contents (not even a prefix).
+        log.i { "Got device token from platform" }
 
         // Register with trusted node
         return registerTokenWithTrustedNode(token)
@@ -145,11 +147,19 @@ class ClientPushNotificationServiceFacade(
         val deviceDescriptor = platformInfo.name
         val platform = PlatformMapper.fromPlatformType(platformInfo.type)
 
-        // Generate symmetric key for push notification encryption (iOS only).
-        // This enables the Notification Service Extension to decrypt notifications
-        // using AES-GCM via CryptoKit, since Apple does not support secp256k1 ECIES.
-        val symmetricKeyBase64 = getOrCreatePushNotificationKeyBase64()
-        validateIosSymmetricKey(platformInfo.type, symmetricKeyBase64)?.let { return it }
+        // Generate / rotate the per-device symmetric key for push notification
+        // encryption. Both platforms decrypt with AES-GCM:
+        // - iOS NSE uses CryptoKit (no secp256k1 ECIES on Apple).
+        // - Android FCM service uses javax.crypto (we don't bundle Bisq2's
+        //   ECIES decryption client-side).
+        // Without a valid key, the trusted node would either fail to encrypt
+        // or fall back to a path the device can't decrypt — abort registration.
+        // Dispatched to IO because the Android implementation initializes Tink
+        // + AndroidKeyStore on first call (multi-second cost) and a synchronous
+        // `commit()` to disk — both block whatever thread they run on, and
+        // `presenterScope` runs on `Dispatchers.Main`.
+        val symmetricKeyBase64 = withContext(Dispatchers.IO) { getOrCreatePushNotificationKeyBase64() }
+        validateSymmetricKey(platformInfo.type, symmetricKeyBase64)?.let { return it }
 
         log.i { "Registering device with deviceId: $deviceId, descriptor: $deviceDescriptor, platform: $platform" }
 
@@ -178,22 +188,49 @@ class ClientPushNotificationServiceFacade(
         // Get deterministic device-specific deviceId (always available from hardware)
         val deviceIdToUnregister = getDeviceId()
 
-        val result = apiGateway.unregisterDevice(deviceIdToUnregister)
+        val apiResult = apiGateway.unregisterDevice(deviceIdToUnregister)
         // Always update local state regardless of API result
         _isDeviceRegistered.value = false
         _deviceId.value = null
+        _deviceToken.value = null
         settingsRepository.update { it.copy(pushNotificationsEnabled = false) }
 
-        if (result.isSuccess) {
-            log.i { "Device unregistered successfully" }
-        } else {
-            log.e { "Failed to unregister device from server: ${result.exceptionOrNull()?.message}" }
+        // Revoke the platform token and (Android) disable Firebase auto-init so
+        // we stop talking to Google's servers until the user opts in again.
+        // The result is captured separately and surfaced to the caller — a
+        // false success here would mean we keep an active FCM connection
+        // despite the user having opted out.
+        val revokeResult = pushNotificationTokenProvider.revokeDeviceToken()
+        revokeResult.onFailure {
+            log.e(it) { "Failed to revoke platform device token" }
         }
-        return result
+
+        if (apiResult.isSuccess) {
+            log.i { "Device unregistered from server successfully" }
+        } else {
+            log.e { "Failed to unregister device from server: ${apiResult.exceptionOrNull()?.message}" }
+        }
+
+        // Combine results: server failure is the primary error; if the server
+        // succeeded but the local revoke failed, surface that as a distinct
+        // failure so the caller can warn the user / retry.
+        return when {
+            apiResult.isFailure -> apiResult
+            revokeResult.isFailure ->
+                Result.failure(
+                    PushNotificationException(
+                        "Server unregister succeeded but local platform token revoke failed — " +
+                            "the device may still receive pushes until the next opt-in/out cycle",
+                        revokeResult.exceptionOrNull(),
+                    ),
+                )
+            else -> Result.success(Unit)
+        }
     }
 
     override suspend fun onDeviceTokenReceived(token: String) {
-        log.i { "Device token received: ${token.take(10)}..." }
+        // Privacy: never log token contents (not even a prefix).
+        log.i { "Device token received from platform" }
         _deviceToken.update { token }
 
         // If push notifications are enabled, re-register with new token
@@ -215,19 +252,22 @@ class ClientPushNotificationServiceFacade(
 }
 
 /**
- * iOS-only validation: rejects registration when the symmetric key creation failed,
- * since NSE decryption requires it. Returns a failure Result if validation fails, null otherwise.
- * Excluded from coverage because Android unit tests always have PlatformType.ANDROID.
+ * Rejects registration when the per-device symmetric key creation/persistence
+ * failed. Both platforms decrypt with AES-GCM and require the key — without
+ * it, pushes from the trusted node are unreadable. Returns a failure Result
+ * when validation fails, null otherwise.
  */
-@ExcludeFromCoverage
-private fun validateIosSymmetricKey(
+internal fun validateSymmetricKey(
     platformType: PlatformType,
     symmetricKeyBase64: String?,
 ): Result<Unit>? {
-    if (platformType == PlatformType.IOS && symmetricKeyBase64 == null) {
-        return Result.failure(PushNotificationException("iOS symmetric key creation failed — NSE decryption will not work"))
-    }
-    return null
+    if (symmetricKeyBase64 != null) return null
+    val message =
+        when (platformType) {
+            PlatformType.IOS -> "iOS symmetric key creation failed — NSE decryption will not work"
+            PlatformType.ANDROID -> "Android symmetric key creation failed — FCM payloads will not be decryptable"
+        }
+    return Result.failure(PushNotificationException(message))
 }
 
 class PushNotificationException(

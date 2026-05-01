@@ -1,5 +1,6 @@
 package network.bisq.mobile.presentation.settings.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -9,6 +10,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.KeyboardType
@@ -31,10 +36,12 @@ import network.bisq.mobile.presentation.common.ui.components.atoms.layout.BisqHD
 import network.bisq.mobile.presentation.common.ui.components.layout.BisqScaffold
 import network.bisq.mobile.presentation.common.ui.components.molecules.TopBar
 import network.bisq.mobile.presentation.common.ui.components.molecules.TopBarContent
+import network.bisq.mobile.presentation.common.ui.components.molecules.dialog.ConfirmationDialog
 import network.bisq.mobile.presentation.common.ui.theme.BisqTheme
 import network.bisq.mobile.presentation.common.ui.utils.DataEntry
 import network.bisq.mobile.presentation.common.ui.utils.ExcludeFromCoverage
 import network.bisq.mobile.presentation.common.ui.utils.RememberPresenterLifecycle
+import network.bisq.mobile.presentation.common.ui.utils.rememberNotificationPermissionLauncher
 import org.koin.compose.koinInject
 
 @Composable
@@ -57,6 +64,20 @@ fun SettingsContent(
     onAction: (SettingsUiAction) -> Unit,
     topBar: @Composable () -> Unit = {},
 ) {
+    // Pre-prompt explainer + system permission launcher for the push-notifications
+    // opt-in toggle. The runtime POST_NOTIFICATIONS prompt (Android 13+) needs an
+    // Activity context, so we launch it here rather than from the presenter.
+    // On grant we dispatch the toggle-on action; on denial the switch stays off
+    // (`uiState.pushNotificationsEnabled` is the source of truth and only flips
+    // after the facade actually registers).
+    var showPushPermissionExplainer by remember { mutableStateOf(false) }
+    val notifPermissionLauncher =
+        rememberNotificationPermissionLauncher { granted ->
+            if (granted) {
+                onAction(SettingsUiAction.OnPushNotificationsToggle(true))
+            }
+        }
+
     BisqScaffold(
         topBar = topBar,
     ) { paddingValues ->
@@ -208,6 +229,80 @@ fun SettingsContent(
                         type = BisqButtonType.Outline,
                         fullWidth = true,
                     )
+
+                    if (uiState.shouldShowPushNotificationsToggle) {
+                        BisqHDivider()
+
+                        BisqText.H4Light("mobile.pushNotifications.settings.title".i18n())
+
+                        BisqGap.V1()
+
+                        BisqSwitch(
+                            label = "mobile.pushNotifications.settings.toggleLabel".i18n(),
+                            checked = uiState.pushNotificationsEnabled,
+                            onSwitch = { newValue ->
+                                if (newValue) {
+                                    showPushPermissionExplainer = true
+                                } else {
+                                    onAction(SettingsUiAction.OnPushNotificationsToggle(false))
+                                }
+                            },
+                        )
+
+                        BisqGap.VQuarter()
+
+                        BisqText.SmallLight(
+                            text = "mobile.pushNotifications.settings.subtitle".i18n(),
+                            color = BisqTheme.colors.mid_grey20,
+                        )
+
+                        BisqGap.VHalf()
+
+                        BisqText.SmallLight(
+                            text = "mobile.pushNotifications.settings.learnMoreLink".i18n(),
+                            color = BisqTheme.colors.primary,
+                            modifier =
+                                Modifier.clickable {
+                                    onAction(SettingsUiAction.OnPushNotificationsLearnMore)
+                                },
+                        )
+
+                        if (!uiState.pushNotificationsEnabled) {
+                            BisqGap.VHalf()
+                            BisqText.SmallLight(
+                                text = "mobile.pushNotifications.settings.disabledWarning".i18n(),
+                                color = BisqTheme.colors.warning,
+                            )
+                        }
+
+                        if (showPushPermissionExplainer) {
+                            ConfirmationDialog(
+                                headline = "mobile.pushNotifications.optIn.headline".i18n(),
+                                message = "mobile.pushNotifications.optIn.body".i18n(),
+                                confirmButtonText = "mobile.pushNotifications.optIn.confirm".i18n(),
+                                dismissButtonText = "mobile.pushNotifications.optIn.cancel".i18n(),
+                                verticalButtonPlacement = true,
+                                horizontalAlignment = Alignment.Start,
+                                extraContent = {
+                                    BisqText.SmallLight(
+                                        text = "mobile.pushNotifications.settings.learnMoreLink".i18n(),
+                                        color = BisqTheme.colors.primary,
+                                        modifier =
+                                            Modifier.clickable {
+                                                onAction(SettingsUiAction.OnPushNotificationsLearnMore)
+                                            },
+                                    )
+                                },
+                                onConfirm = {
+                                    showPushPermissionExplainer = false
+                                    notifPermissionLauncher.launch()
+                                },
+                                onDismiss = {
+                                    showPushPermissionExplainer = false
+                                },
+                            )
+                        }
+                    }
 
                     if (uiState.shouldShowPoWAdjustmentFactor) {
                         BisqHDivider()

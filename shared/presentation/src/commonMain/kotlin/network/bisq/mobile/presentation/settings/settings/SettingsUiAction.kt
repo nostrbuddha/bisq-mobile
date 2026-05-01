@@ -61,4 +61,12 @@ sealed interface SettingsUiAction {
     data object OnResetAllDontShowAgainClick : SettingsUiAction
 
     data object OnRetryLoadSettingsClick : SettingsUiAction
+
+    /** User toggled the relayed-push-notifications opt-in. */
+    data class OnPushNotificationsToggle(
+        val enabled: Boolean,
+    ) : SettingsUiAction
+
+    /** User tapped a "Learn more" affordance in the relayed-push-notifications section. */
+    data object OnPushNotificationsLearnMore : SettingsUiAction
 }
