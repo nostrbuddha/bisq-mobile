@@ -204,10 +204,17 @@ class WebSocketClientService(
      */
     suspend fun disposeClient() {
         clientUpdateMutex.withLock {
+            // Cancel state collection BEFORE disposing the client so a final dying
+            // status emission from the disposed client cannot overwrite the next
+            // updateWebSocketClient()'s fresh state. Symmetric with the
+            // proxyModeChanged branch in updateWebSocketClient().
+            stateCollectionJob?.cancel()
+            stateCollectionJob = null
             httpClientService.disposeClient()
             currentClient.value?.dispose()
             currentClient.value = null
             currentClientSettings = null
+            _connectionState.value = ConnectionState.Disconnected()
             requestedSubscriptions.value.forEach { entry ->
                 entry.value.resetSequence()
             }
@@ -220,13 +227,34 @@ class WebSocketClientService(
      */
     private suspend fun updateWebSocketClient(httpClientSettings: HttpClientSettings) {
         clientUpdateMutex.withLock {
+            val previousSettings = currentClientSettings
+
             // Skip replacement if current client uses identical settings —
             // avoids disposing a working connection during startup when
             // httpClientChangedFlow emits duplicate/equivalent configs
             // (e.g., from Tor state transitions).
-            if (currentClient.value != null && httpClientSettings == currentClientSettings) {
+            if (currentClient.value != null && httpClientSettings == previousSettings) {
                 log.d { "WebSocket client settings unchanged, skipping update" }
                 return@withLock
+            }
+
+            // Proxy mode transitions (e.g. Tor → clearnet when switching to demo, or
+            // back) must not leak state from the previous client's reconnect loop.
+            // Cancel state collection BEFORE disposing so dying status emissions can't
+            // overwrite the fresh disconnected state below.
+            val proxyModeChanged =
+                previousSettings != null && (
+                    previousSettings.externalProxyUrl != httpClientSettings.externalProxyUrl ||
+                        previousSettings.isTorProxy != httpClientSettings.isTorProxy
+                )
+            if (proxyModeChanged) {
+                log.i {
+                    "Proxy mode change: " +
+                        "(externalProxyUrl=${previousSettings.externalProxyUrl}, isTor=${previousSettings.isTorProxy}) → " +
+                        "(externalProxyUrl=${httpClientSettings.externalProxyUrl}, isTor=${httpClientSettings.isTorProxy})"
+                }
+                stateCollectionJob?.cancel()
+                stateCollectionJob = null
             }
 
             val newApiUrl: Url =
