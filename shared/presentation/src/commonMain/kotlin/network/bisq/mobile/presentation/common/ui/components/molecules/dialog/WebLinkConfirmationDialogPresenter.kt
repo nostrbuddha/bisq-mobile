@@ -1,7 +1,7 @@
 package network.bisq.mobile.presentation.common.ui.components.molecules.dialog
 
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.ui.platform.Clipboard
-import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.text.AnnotatedString
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import network.bisq.mobile.data.service.settings.SettingsServiceFacade
 import network.bisq.mobile.i18n.i18n
 import network.bisq.mobile.presentation.common.ui.base.BasePresenter
+import network.bisq.mobile.presentation.common.ui.base.SnackbarPosition
 import network.bisq.mobile.presentation.common.ui.components.organisms.SnackbarType
 import network.bisq.mobile.presentation.common.ui.utils.toClipEntry
 import network.bisq.mobile.presentation.main.MainPresenter
@@ -26,13 +27,11 @@ class WebLinkConfirmationDialogPresenter(
     private var userOnConfirm: () -> Unit = {}
     private var userOnDismiss: () -> Unit = {}
     private var userOnError: () -> Unit = {}
-    private var currentUriHandler: UriHandler? = null
     private var currentClipboard: Clipboard? = null
     private var activeLink: String = ""
 
     fun initialize(
         link: String,
-        uriHandler: UriHandler,
         clipboard: Clipboard,
         onConfirm: () -> Unit,
         onDismiss: () -> Unit,
@@ -43,7 +42,6 @@ class WebLinkConfirmationDialogPresenter(
         userOnConfirm = onConfirm
         userOnDismiss = onDismiss
         userOnError = onError
-        currentUriHandler = uriHandler
         currentClipboard = clipboard
 
         _uiState.value = WebLinkConfirmationUiState()
@@ -92,14 +90,22 @@ class WebLinkConfirmationDialogPresenter(
                         dontShowAgain = _uiState.value.dontShowAgain,
                     )
                 }
-                currentUriHandler?.openUri(uri)
+                // navigateToUrl returns false when already non-interactive (anti double-tap)
+                // before attempting to open; snapshot before call to tell that apart from a real failure.
+                val interactiveBeforeOpen = isInteractive.value
+                if (!navigateToUrl(uri)) {
+                    if (!interactiveBeforeOpen) {
+                        return@launch
+                    }
+                    throw IllegalStateException("Failed to open URI")
+                }
                 userOnConfirm.invoke()
             } catch (cancellationException: CancellationException) {
                 throw cancellationException
             } catch (throwable: Throwable) {
                 log.e(throwable) { "Failed to open URI from web link confirmation dialog" }
                 userOnError.invoke()
-                showSnackbar("mobile.error.generic".i18n(), type = SnackbarType.ERROR)
+                mainPresenter.showSnackbar("mobile.error.cannotOpenUrl".i18n(), SnackbarType.ERROR)
             } finally {
                 if (persist) hideLoading()
             }

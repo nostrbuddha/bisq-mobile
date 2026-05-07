@@ -9,13 +9,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
-import kotlinx.coroutines.CancellationException
+import androidx.compose.ui.platform.UriHandler
 import network.bisq.mobile.presentation.common.ui.components.atoms.BisqButton
 import network.bisq.mobile.presentation.common.ui.components.atoms.BisqButtonType
 import network.bisq.mobile.presentation.common.ui.components.molecules.dialog.WebLinkConfirmationDialog
 import network.bisq.mobile.presentation.common.ui.theme.BisqTheme
 import network.bisq.mobile.presentation.common.ui.theme.BisqUIConstants
+import network.bisq.mobile.presentation.common.ui.utils.openUriSafely
 
+// TODO: Centralize URL-open logic via UrlLauncher and eliminate LocalUriHandler,
+// So the behavior can be customized per OS and exceptions handled in a single place.
 @Composable
 fun LinkButton(
     text: String,
@@ -49,12 +52,8 @@ fun LinkButton(
                     onClick?.invoke()
                     return@BisqButton
                 }
-                try {
-                    uriHandler.openUri(link)
+                if (tryOpenLinkWithoutConfirmation(uriHandler, link, onError)) {
                     onClick?.invoke()
-                } catch (t: Throwable) {
-                    if (t is CancellationException) throw t
-                    onError?.invoke(t)
                 }
             }
         },
@@ -76,8 +75,13 @@ fun LinkButton(
             },
             onError = {
                 showConfirmDialog = false
-                onError?.invoke(RuntimeException("Web link confirmation failed"))
             },
         )
     }
 }
+
+internal fun tryOpenLinkWithoutConfirmation(
+    uriHandler: UriHandler,
+    link: String,
+    onError: ((Throwable) -> Unit)?,
+): Boolean = uriHandler.openUriSafely(uri = link) { throwable -> onError?.invoke(throwable) }
