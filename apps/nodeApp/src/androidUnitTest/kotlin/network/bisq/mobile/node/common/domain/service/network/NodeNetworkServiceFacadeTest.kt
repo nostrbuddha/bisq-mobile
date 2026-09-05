@@ -187,19 +187,22 @@ class NodeNetworkServiceFacadeTest : NodeKoinIntegrationTestBase() {
             activateFacade()
             assertEquals(1, facade.connectedPeers.value.size)
 
-            // When reading a peer's metrics blows up mid-snapshot (#1796: on the Node 0.10.0 jar, before bisq2
-            // fix 6707f25, ConnectionMetrics iterated a TreeMap its network threads were mutating)
+            // When a second peer connects but reading a peer's metrics blows up mid-snapshot (#1796: on the
+            // Node 0.10.0 jar, before bisq2 fix 6707f25, ConnectionMetrics iterated a TreeMap its network
+            // threads were mutating)
+            every { node.allActiveConnections } answers { Stream.of(connection, secondConnection) }
+            every { node.numConnections } returns 2
             every { metrics.sentBytes } throws ConcurrentModificationException()
             facade.onConnection(secondConnection)
             advanceUntilIdle()
 
-            // Then the list keeps its previous snapshot rather than a half-written one
+            // Then the count (written before the mapping) stays live while the list keeps its previous
+            // snapshot rather than a half-written one
+            assertEquals(2, facade.numConnections.value)
             assertEquals(1, facade.connectedPeers.value.size)
 
             // And once the metrics read again, the very next tick refreshes — the single collector is alive
             every { metrics.sentBytes } returns 100L
-            every { node.allActiveConnections } answers { Stream.of(connection, secondConnection) }
-            every { node.numConnections } returns 2
             facade.onConnection(secondConnection)
             advanceUntilIdle()
             assertEquals(2, facade.connectedPeers.value.size)

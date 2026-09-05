@@ -10,6 +10,7 @@ import bisq.network.p2p.node.CloseReason
 import bisq.network.p2p.node.Connection
 import bisq.network.p2p.node.Node
 import bisq.network.p2p.services.peer_group.PeerGroupService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -197,6 +198,8 @@ class NodeNetworkServiceFacade(
             updateNumConnections()
             updateConnectedPeers()
             updateMyNodeInfo()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             log.e(e) { "Peer state refresh failed; keeping the collector alive for the next tick" }
         }
